@@ -1,9 +1,12 @@
 import { createRoot } from 'react-dom/client';
 import App from '@src/App';
 import tailwindcssOutput from '../dist/tailwind-output.css?inline';
+import '@extension/ui/dist/global.css';
 
 const root = document.createElement('div');
 root.id = 'chrome-extension-boilerplate-react-vite-content-view-root';
+// root.style.position = "absolute"
+// root.style.background = "green"
 
 document.body.append(root);
 
