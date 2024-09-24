@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 // import { Button } from '@extension/ui';
 import { useStorage } from '@extension/shared';
 import { exampleThemeStorage } from '@extension/storage';
+import { compile, convert } from 'html-to-text';
+
 import {
   Button,
   Dialog,
@@ -17,7 +19,12 @@ import {
   DialogPortal,
   DialogOverlay,
 } from '@extension/ui';
-import BookmarkTreeNode from '@types/chrome';
+import { addLink, createLinkSchema, getAllCollectionList } from '@src/fastgpt';
+
+interface BookmarkSet {
+  title: string;
+  url: string; // 书签有 url，文件夹没有
+}
 
 interface BookmarkTreeNode {
   id: string;
@@ -49,13 +56,104 @@ function traverseBookmarks(bookmarkNodes: BookmarkTreeNode[]): BookmarkInfo[] {
   return bookmarks;
 }
 
+type CollectionList = {
+  _id: string;
+  parentId: null;
+  tmbId: '66ee5536dfb00794b1a20687';
+  type: 'link';
+  name: '哔哩哔哩 (゜-゜)つロ 干杯~-bilibili';
+  forbid: false;
+  trainingType: 'chunk';
+  rawLink: string;
+  createTime: '2024-09-22T14:04:52.731Z';
+  updateTime: '2024-09-22T14:04:52.731Z';
+  dataAmount: 19;
+  trainingAmount: 0;
+  permission: {
+    value: 4294967295;
+    isOwner: true;
+    hasManagePer: true;
+    hasWritePer: true;
+    hasReadPer: true;
+  };
+}[];
+
+function html2text(html: string): string {
+  const options = {
+    // wordwrap: 130,
+    // ...
+  };
+  // const compiledConvert = compile(options); // options passed here
+  // const html = '<div>Hello World</div>';
+  const text = convert(html, options);
+  console.log(text); // Hello World
+  return text;
+}
+
+async function sendMessage(message) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(message, function (response) {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve(response);
+      }
+    });
+  });
+}
+
 // import { Copy } from 'lucide-react';
 async function getCurrentTab() {
-  chrome.runtime.sendMessage({ greeting: '你好，我是content-script呀，我主动发消息给后台！' }, function (response) {
-    const bookmarks = JSON.parse(response);
-    console.log(bookmarks);
-    const bookmarksTransformed = traverseBookmarks(bookmarks);
+  const bookmarks: BookmarkTreeNode[] = [];
+  let bookmarksTransformed: BookmarkSet[] = [];
+  const collectionList: BookmarkTreeNode[] = [];
+
+  const response2 = await sendMessage({ greeting: 'getBookmarkTreeNodes' });
+
+  const bookmarks_ = JSON.parse(response2);
+  bookmarks.push(bookmarks_);
+  bookmarksTransformed = traverseBookmarks(bookmarks);
+
+  const response3 = await sendMessage({ greeting: 'getAllCollectionList' });
+  const collectionList_: CollectionList = JSON.parse(response3);
+  const links = Array.from(collectionList_, collection => {
+    return collection.rawLink;
   });
+
+  const addDatasetBookmark: BookmarkSet[] = [];
+  const collectionSet = new Set(links);
+  for (const bookmark of bookmarksTransformed) {
+    if (collectionSet.has(bookmark.url)) {
+      console.log(bookmark);
+      continue;
+    }
+    addDatasetBookmark.push(bookmark);
+  }
+
+  // const response4 = await sendMessage({ greeting: 'getBookmarkTreeNodes' });
+  for (const bookmark of addDatasetBookmark) {
+    const html: string = (await sendMessage({ greeting: 'getUrlHtml', url: bookmark.url })) as string;
+    if (html === null) {
+      continue;
+    }
+    const text = html2text(html);
+    console.log(text);
+    const body: createLinkSchema = {
+      text,
+      datasetId: '66eeb16187788986aff82fb1',
+      name: bookmark.url,
+      parentId: null,
+      trainingType: 'chunk',
+      chunkSize: 512,
+      chunkSplitter: '',
+      qaPrompt: '',
+    };
+    chrome.runtime.sendMessage({ greeting: 'addLink', requestBody: body }, function (response) {
+      console.log('收到来自后台的回复：');
+      console.log(response);
+    });
+    break;
+  }
 }
 
 export function DialogDemo() {
@@ -64,7 +162,7 @@ export function DialogDemo() {
   return (
     <div>
       <div ref={setContainer} />
-      <Dialog open={open} modal={false}>
+      <Dialog open={open} modal={false} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button variant="outline">Edit Profile</Button>
         </DialogTrigger>
