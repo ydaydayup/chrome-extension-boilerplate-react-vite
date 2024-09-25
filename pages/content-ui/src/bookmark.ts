@@ -144,8 +144,10 @@ export type SearchTestRequest = {
   usingReRank: boolean;
 };
 
-export async function searchDatasetText(body: SearchTestRequest) {
-  const result: string = (await sendMessage({ greeting: 'searchTest', url: body })) as string;
+export async function searchDatasetText(body: SearchTestRequest): Promise<{
+  data: { list: { sourceName: string }[] };
+}> {
+  const result: string = (await sendMessage({ greeting: 'searchTest', requestBody: body })) as string;
   console.log(result);
   return result;
 }

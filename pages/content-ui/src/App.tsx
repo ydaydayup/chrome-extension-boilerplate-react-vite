@@ -13,9 +13,11 @@ import {
 } from '@extension/ui';
 import type { SearchTestRequest } from '@src/bookmark';
 import { addBookmarks2Datasets, searchDatasetText } from '@src/bookmark';
+import { Items } from '@src/mail-list';
 
 function SearchDataset() {
   const [searchText, setSearchText] = useState('');
+  const [result, setResult] = useState<{ title: string; url: string }[]>([]);
 
   const body2: SearchTestRequest = {
     datasetId: '66eeb16187788986aff82fb1',
@@ -25,17 +27,28 @@ function SearchDataset() {
     searchMode: 'mixedRecall',
     usingReRank: false,
   };
+
+  function handleTextareaChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setSearchText(e.target.value);
+  }
+
   const search = async () => {
     body2.text = searchText;
-    const result = await searchDatasetText(body2);
+    const result_ = await searchDatasetText(body2);
+    setResult(
+      Array.from(result_.data.list, item => {
+        return { title: item.sourceName, url: item.sourceName };
+      }),
+    );
   };
   return (
     <div className="grid w-full max-w-sm items-center gap-1.5">
       <Label htmlFor="search">搜索书签</Label>
-      <Input value={searchText} type="text" id="search" placeholder="" />
+      <Input value={searchText} onChange={handleTextareaChange} type="text" id="search" placeholder="" />
       <Button type="submit" onClick={search}>
         Submit
       </Button>
+      <Items items={result}></Items>
     </div>
   );
 }
