@@ -30,7 +30,7 @@
     "update-version": "run-script-os",
     "update-version:win32": "bash update_version.sh",
     "update-version:default": "./update_version.sh",
-    "test": "vitest",
+    "test": "vitest --watch=false",
     "coverage": "vitest run --coverage"
   },
   "dependencies": {

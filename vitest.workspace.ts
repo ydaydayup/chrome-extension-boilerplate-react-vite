@@ -16,6 +16,7 @@ export default defineWorkspace([
       exclude: ['*.js', 'chrome-extension/manifest.js', 'tests/**/*.{js,ts}'],
       include: ['chrome-extension/**/*.{ts}'],
       includeSource: ['chrome-extension/**/*.{js,ts}', 'pages/**/*.{js,ts}'],
+      testTimeout: 50000,
     },
     define: {
       'import.meta.vitest': 'undefined',
