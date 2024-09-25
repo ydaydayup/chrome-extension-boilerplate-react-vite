@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
 import {
   Button,
@@ -7,15 +7,12 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
   DialogTrigger,
-  DialogClose,
   Input,
   Label,
-  DialogPortal,
-  DialogOverlay,
 } from '@extension/ui';
-import { addBookmarks2Datasets, searchDatasetText, SearchTestRequest } from '@src/bookmark';
+import type { SearchTestRequest } from '@src/bookmark';
+import { addBookmarks2Datasets, searchDatasetText } from '@src/bookmark';
 
 function SearchDataset() {
   const [searchText, setSearchText] = useState('');
@@ -28,7 +25,7 @@ function SearchDataset() {
     searchMode: 'mixedRecall',
     usingReRank: false,
   };
-  const search = () => {
+  const search = async () => {
     body2.text = searchText;
     const result = await searchDatasetText(body2);
   };

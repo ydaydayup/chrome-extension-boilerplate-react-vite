@@ -1,14 +1,6 @@
 import 'webextension-polyfill';
 import { exampleThemeStorage } from '@extension/storage';
-import {
-  addLink,
-  getAllCollectionList,
-  createLinkSchema,
-  getUrlHtml,
-  addText,
-  searchTest,
-  SearchTestRequest,
-} from './fastgpt';
+import { addText, getAllCollectionList, getUrlHtml, searchTest } from './fastgpt';
 
 exampleThemeStorage.get().then(theme => {
   console.log('theme', theme);
