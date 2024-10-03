@@ -9,7 +9,7 @@ export default defineWorkspace([
   {
     // extends: './vite.config.ts',
     test: {
-      name: 'happy-dom',
+      name: 'test',
       // root: './shared_tests',
       environment: 'node',
       // setupFiles: ['./setup.happy-dom.ts'],

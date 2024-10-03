@@ -11,7 +11,30 @@ const service = axios.create({
   timeout: 5000, // request timeout
 });
 
-// service
+// 添加请求拦截器
+service.interceptors.request.use(
+  async config => {
+    // 在发送请求之前做些什么
+    // 判断请求方法是否为'post'或其他需要修改body的方法
+    if (config.method === 'post' || config.method === 'PUT') {
+      let data = {};
+      try {
+        data = await chrome.storage.sync.get('datasetId');
+      } catch (e) {
+        console.error(e);
+      }
+      config.data = {
+        ...(config.data || {}), // 确保原有的数据不被覆盖，而是被合并
+        data,
+      };
+    }
+    return config;
+  },
+  error => {
+    // 对请求错误做些什么
+    return Promise.reject(error);
+  },
+);
 
 export type SearchTestRequest = {
   datasetId: string;
@@ -81,7 +104,10 @@ async function getCollectionList(body) {
   }
 }
 
-async function getAllCollectionList(): Promise<SearchTestResponse> {
+type Collection = {
+  _id: string;
+};
+async function getAllCollectionList(): Promise<Collection> {
   const body = {
     pageNum: 0,
     pageSize: 30,
@@ -103,14 +129,14 @@ async function getAllCollectionList(): Promise<SearchTestResponse> {
 }
 
 // 使用该函数
-const requestBody: SearchTestRequest = {
-  datasetId: '66eeb16187788986aff82fb1',
-  text: 'Cannot truncate a table referenced in a forein key constraint',
-  limit: 5000,
-  similarity: 0,
-  searchMode: 'embedding',
-  usingReRank: false,
-};
+// const requestBody: SearchTestRequest = {
+//   datasetId: '66eeb16187788986aff82fb1',
+//   text: 'Cannot truncate a table referenced in a forein key constraint',
+//   limit: 5000,
+//   similarity: 0,
+//   searchMode: 'embedding',
+//   usingReRank: false,
+// };
 
 // searchTest(requestBody)
 //   .then(response => console.log(response))
@@ -234,5 +260,14 @@ if (import.meta.vitest) {
       expect(resp3.code).equal(200);
     });
   });
+  test('removeALL', async () => {
+    const resp = await getAllCollectionList();
+    assert.isArray(resp, 'color is array');
+    for (const collection of resp) {
+      const result = await removeCollection(collection._id);
+      console.log(result);
+    }
+  });
 }
+
 export { getUrlHtml, addLink, getAllCollectionList, type createLinkSchema };

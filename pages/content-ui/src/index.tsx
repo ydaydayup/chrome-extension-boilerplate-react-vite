@@ -1,13 +1,14 @@
 import { createRoot } from 'react-dom/client';
 import App from '@src/App';
 import tailwindcssOutput from '../dist/tailwind-output.css?inline';
-// import '@extension/ui/dist/global.css';
-
+import '@extension/ui/dist/global.css';
+// import globalCSSStyles from '@extension/ui/lib/global.css?inline';
 const root = document.createElement('div');
 root.id = 'chrome-extension-boilerplate-react-vite-content-view-root';
 
 document.body.append(root);
 
+// const styleIntoShadow = document.createElement('style');
 const rootIntoShadow = document.createElement('div');
 rootIntoShadow.id = 'shadow-root';
 
@@ -29,6 +30,13 @@ if (navigator.userAgent.includes('Firefox')) {
   globalStyleSheet.replaceSync(tailwindcssOutput);
   shadowRoot.adoptedStyleSheets = [globalStyleSheet];
 }
-
+// styleIntoShadow.innerHTML = `
+//           <style>
+//           ${globalCSSStyles}
+//
+//           </style>
+//           <div>I'm in the shadow root and my color is green.</div>
+//         `;
+// shadowRoot.appendChild(styleIntoShadow)
 shadowRoot.appendChild(rootIntoShadow);
 createRoot(rootIntoShadow).render(<App />);

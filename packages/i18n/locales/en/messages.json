@@ -1,11 +1,11 @@
 {
   "extensionDescription": {
-    "description": "Extension description",
-    "message": "Chrome extension boilerplate developed with Vite, React and Typescript"
+    "description": "Smart bookmarks and tabs assistant",
+    "message": "Smart bookmarks and tabs assistant"
   },
   "extensionName": {
-    "description": "Extension name",
-    "message": "Chrome extension boilerplate"
+    "description": "SmartBT",
+    "message": "Smart bookmarks and tabs assistant"
   },
   "toggleTheme": {
     "message": "Toggle theme"

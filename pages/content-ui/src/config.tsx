@@ -7,6 +7,8 @@ import { Button } from '@extension/ui';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, Input } from '@extension/ui';
 import { toast } from '@extension/ui/lib/hooks/use-toast';
 import { sendMessage } from '@src/extensonWrapper';
+import { createStorage, useStorageState } from '@src/state';
+import React, { useState } from 'react';
 // import { Input } from "@/components/ui/input"
 
 const FormSchema = z.object({
@@ -16,17 +18,20 @@ const FormSchema = z.object({
 });
 
 export function InputForm() {
+  const storage = useStorageState(state => state);
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      datasetId: '',
+      datasetId: storage.datasetId || '',
     },
   });
+  console.log(form);
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
-    const databaseId = (await sendMessage({ greeting: 'datasetId', ...data })) as string;
-    console.log(databaseId, '===============');
-
+    const datasetId = (await sendMessage({ greeting: 'datasetId', ...data })) as string;
+    console.log(datasetId, 'datasetId');
+    await createStorage();
+    form.setValue('datasetId', datasetId);
     toast({
       title: 'You submitted the following values:',
       description: (
@@ -37,6 +42,7 @@ export function InputForm() {
     });
   }
 
+  const datasetIdInput = storage.datasetId ? '已配置datasetId，重新提交可以更新' : '请配置datasetId';
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 grid">
@@ -47,26 +53,21 @@ export function InputForm() {
             <FormItem>
               <FormLabel>知识库ID</FormLabel>
               <a
-                className={'text-zinc-800 text-xs'}
+                className={'text-muted-foreground text-xs'}
                 target="_blank"
                 href="https://doc.tryfastgpt.ai/docs/development/openapi/dataset/#%E5%88%9B%E5%BB%BA%E4%B8%80%E4%B8%AA%E7%A9%BA%E7%9A%84%E9%9B%86%E5%90%88">
                 (知识库ID获取文档)
               </a>
               <FormControl>
-                <Input placeholder="知识库ID" {...field} />
+                <Input placeholder={datasetIdInput} {...field} />
               </FormControl>
-              <FormDescription>
-                {/*<Button variant="link">Link</Button>*/}
-                {/*<Button asChild>*/}
-
-                {/*</Button>*/}
-              </FormDescription>
+              <FormDescription></FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
         <Button className={'justify-self-end row-start-2'} type="submit">
-          Submit
+          提交
         </Button>
       </form>
     </Form>

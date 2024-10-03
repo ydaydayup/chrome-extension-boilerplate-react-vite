@@ -27,10 +27,6 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
-// 这是提取的实例类型，
-type ErrorDialogContentProps = React.ComponentPropsWithoutRef<
-  typeof DialogPrimitive.Content & typeof DialogPrimitive.Portal
->;
 type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> &
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Portal>;
 

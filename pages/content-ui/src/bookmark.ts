@@ -1,5 +1,7 @@
 // import { Button } from '@extension/ui';
 import { convert } from 'html-to-text';
+import { setBookmarkDialogState, useBookmarkDialogState } from './state';
+import { sendMessage } from '@src/extensonWrapper';
 
 type createLinkSchema = {
   link?: string;
@@ -77,19 +79,8 @@ function html2text(html: string): string {
   return text;
 }
 
-async function sendMessage(message: { greeting: string; [key: string]: unknown }): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage(message, function (response) {
-      if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError);
-      } else {
-        resolve(response);
-      }
-    });
-  });
-}
-
 export async function addBookmarks2Datasets() {
+  setBookmarkDialogState({ progress: 0, isUpload: true });
   // 获取所有书签
   const bookmarks = (await sendMessage({ greeting: 'getBookmarkTreeNodes' })) as BookmarkTreeNode[];
 
@@ -111,15 +102,24 @@ export async function addBookmarks2Datasets() {
     addDatasetBookmark.push(bookmark);
   }
 
-  for (const bookmark of addDatasetBookmark.slice(0, 100)) {
+  const addDatasetBookmark_ = addDatasetBookmark.slice(0, 3);
+  const length = addDatasetBookmark_.length;
+  for (const [index, bookmark] of addDatasetBookmark_.entries()) {
+    const progress = (index / (length - 1)) * 100;
+    setBookmarkDialogState({ progress: progress });
     const html: string = (await sendMessage({ greeting: 'getUrlHtml', url: bookmark.url })) as string;
     if (html === null) {
       continue;
     }
     const text = html2text(html);
-    console.log(text);
+    const summary: string = (await sendMessage({ greeting: 'kimiApi', htmlText: text })) as string;
+    if (summary === null) {
+      console.error({ bookmark });
+      continue;
+    }
+    console.log({ summary });
     const body: createLinkSchema = {
-      text,
+      text: summary,
       datasetId: '66eeb16187788986aff82fb1',
       name: `${bookmark.title}-${bookmark.url}`,
       parentId: null,
@@ -132,7 +132,9 @@ export async function addBookmarks2Datasets() {
       console.log('收到来自后台的回复：');
       console.log(response);
     });
+    // break
   }
+  // setBookmarkDialogState({ isUpload: false });
 }
 
 export type SearchTestRequest = {
