@@ -36,6 +36,7 @@
     "@radix-ui/react-toast": "^1.2.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "cmdk": "1.0.0",
     "html-to-text": "^9.0.5",
     "html2text": "^6.0.0",
     "lucide-react": "^0.445.0",

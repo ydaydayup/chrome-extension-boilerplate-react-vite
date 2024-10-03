@@ -34,6 +34,15 @@ const manifest = deepmerge(
       service_worker: 'background.iife.js',
       type: 'module',
     },
+    commands: {
+      tabAssistant: {
+        suggested_key: {
+          default: 'Ctrl+Shift+E',
+          mac: 'Command+Shift+E',
+        },
+        description: 'Run "foo" on the current page.',
+      },
+    },
     // action: {
     //   default_popup: 'popup/index.html',
     //   default_icon: 'icon-34.png',

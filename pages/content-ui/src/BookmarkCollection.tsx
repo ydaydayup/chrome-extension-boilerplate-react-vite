@@ -18,9 +18,6 @@ import { addBookmarks2Datasets, searchDatasetText } from '@src/bookmark';
 import { Items } from '@src/mail-list';
 import { setBookmarkDialogState, useBookmarkDialogState } from '@src/state';
 import { InputForm } from '@src/config';
-import * as ProgressPrimitive from '@radix-ui/react-progress';
-
-// import { Search } from 'lucide-react';
 
 function SearchDataset() {
   const [searchText, setSearchText] = useState('');
@@ -81,9 +78,7 @@ export function ProgressBookmarks(props: React.ComponentPropsWithoutRef<typeof P
 
 export function BookmarkCollection() {
   const { isOpen, isUpload, progress } = useBookmarkDialogState(state => state);
-  // const isUpload = useBookmarkDialogState((state) => state.isUpload);
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
-  // const [open, setOpen] = React.useState(true);
   const setOpen = (isOpen: boolean) => {
     setBookmarkDialogState({ isOpen });
   };
@@ -92,10 +87,10 @@ export function BookmarkCollection() {
     <div className={'dark text-primary'}>
       <div ref={setContainer} />
       <Dialog open={isOpen} modal={false} onOpenChange={setOpen}>
-        {/*<DialogTrigger asChild>*/}
-        {/*  <Button variant="outline">Edit Profile</Button>*/}
-        {/*</DialogTrigger>*/}
         <DialogContent container={container} className="z-[9999]">
+          <div className={'h-20 w-20 bg-green-300 overflow-y-scroll'}>
+            <div className={'h-60 w-20 bg-green-30'}></div>
+          </div>
           <DialogHeader>
             <DialogTitle>书签助手</DialogTitle>
             <DialogDescription>点击收集书签信息既可以把书签存到向量库中</DialogDescription>
@@ -113,5 +108,3 @@ export function BookmarkCollection() {
     </div>
   );
 }
-
-export { BookmarkCollection };

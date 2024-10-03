@@ -32,8 +32,8 @@
     "update-version:default": "./update_version.sh",
     "test": "vitest --watch=false",
     "test-removeALL": "vitest  --run --testNamePattern=removeALL  --watch=false",
-    "test-kimiApi": "vitest --run --testNamePattern=kimiApi  --watch=false",
-    "coverage": "vitest run --coverage"
+    "test-kimiApi": "vitest --run --testNamePattern=kimiApi import { Tabs } from '@types/chrome'; --watch=false",
+    "import { Tabs } from '@types/chrome';coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

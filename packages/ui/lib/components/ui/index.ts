@@ -6,3 +6,4 @@ export * from './badge';
 export * from './form';
 export * from './toast';
 export * from './progress';
+export * from './command';

@@ -1,14 +1,21 @@
-'use client';
-
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Button } from '@extension/ui';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, Input } from '@extension/ui';
+import {
+  Button,
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+} from '@extension/ui';
 import { toast } from '@extension/ui/lib/hooks/use-toast';
 import { sendMessage } from '@src/extensonWrapper';
 import { createStorage, useStorageState } from '@src/state';
-import React, { useState } from 'react';
+import React from 'react';
 // import { Input } from "@/components/ui/input"
 
 const FormSchema = z.object({
@@ -25,7 +32,6 @@ export function InputForm() {
       datasetId: storage.datasetId || '',
     },
   });
-  console.log(form);
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
     const datasetId = (await sendMessage({ greeting: 'datasetId', ...data })) as string;
