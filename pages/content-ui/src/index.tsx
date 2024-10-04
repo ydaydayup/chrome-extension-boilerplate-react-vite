@@ -1,9 +1,8 @@
 import { createRoot } from 'react-dom/client';
 import App from '@src/App';
 import tailwindcssOutput from '../dist/tailwind-output.css?inline';
-// import tailwindcssOutput from '../dist/tailwind-output.css?inline';
 import '@extension/ui/dist/global.css';
-// import globalCSSStyles from '@extension/ui/lib/global.css?inline';
+// import './framer.scss';
 const root = document.createElement('div');
 root.id = 'chrome-extension-boilerplate-react-vite-content-view-root';
 

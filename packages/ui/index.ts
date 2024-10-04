@@ -7,4 +7,5 @@ export * from './lib/components/ui';
 export * as hooks from './lib/hooks';
 // export * from './lib/components/MySearch';
 export * as lucide from 'lucide-react';
+// export { withUI } from './lib/withUI';
 // import '@extension/ui/dist/global.css';

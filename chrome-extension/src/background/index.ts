@@ -23,15 +23,13 @@ async function getBookmarkTreeNodes() {
   });
 }
 
-// @ts-ignore
-function sendResponseMessage(result: Promise<any>, sendResponse) {
+function sendResponseMessage(result: Promise<unknown>, sendResponse) {
   result
     .then(response => {
       sendResponse(response);
     })
     .catch(error => {
       console.error('during searchTest request:', error);
-      //   // chrome.storage.local.set({error: error})
       sendResponse(error);
     });
 }
@@ -53,8 +51,8 @@ async function setDatasetId(datasetId: string) {
 }
 
 async function jump2Tab(tab: chrome.tabs.Tab) {
-  await chrome.tabs.update(tab.id, { active: true });
-  await chrome.windows.update(tab.windowId, { focused: true });
+  chrome.tabs.update(tab.id, { active: true });
+  chrome.windows.update(tab.windowId, { focused: true });
 }
 
 // 监听来自content-script的消息
