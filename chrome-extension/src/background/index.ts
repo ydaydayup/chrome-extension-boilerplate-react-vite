@@ -2,6 +2,7 @@ import 'webextension-polyfill';
 import { addText, getAllCollectionList, getUrlHtml, searchTest } from './fastgpt';
 import type { OnClickData } from '@types/chrome';
 import { getHtmlTextSummary } from '@src/background/kimi';
+import { as } from 'vitest/dist/chunks/reporters.WnPwkmgA';
 
 async function getAllTabs(): Promise<chrome.tabs.Tab[]> {
   const tabs = await chrome.tabs.query({});
@@ -50,6 +51,21 @@ async function setDatasetId(datasetId: string) {
   return datasetId;
 }
 
+async function canvas2htmlRetriever(tab: chrome.tabs.Tab) {
+  return await chrome.storage.session.get({ [tab.id as number]: { dataURL: null } });
+}
+
+async function canvas2htmlSaver(tab: chrome.tabs.Tab, dataURL) {
+  chrome.storage.session.set({ [tab.id as number]: { dataURL: dataURL } });
+}
+
+async function canvasAllTabs(tabs: chrome.tabs.Tab[]) {
+  for (const tab of tabs) {
+    chrome.tabs.sendMessage(tab.id, { message: 'html2canvas', tab });
+  }
+  return tabs;
+}
+
 async function jump2Tab(tab: chrome.tabs.Tab) {
   chrome.tabs.update(tab.id, { active: true });
   chrome.windows.update(tab.windowId, { focused: true });
@@ -85,6 +101,15 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
       break;
     case 'getAllTabs':
       sendResponseMessage(getAllTabs(), sendResponse);
+      break;
+    case 'canvas2htmlSender':
+      sendResponseMessage(canvasAllTabs(request.tabs), sendResponse);
+      break;
+    case 'canvas2htmlSaver':
+      sendResponseMessage(canvas2htmlSaver(request.tab, request.dataURL), sendResponse);
+      break;
+    case 'canvas2htmlRetriever':
+      sendResponseMessage(canvas2htmlRetriever(request.tab), sendResponse);
       break;
     case 'jump2Tab':
       sendResponseMessage(jump2Tab(request.tab), sendResponse);

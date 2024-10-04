@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { sendMessage } from '@src/extensonWrapper';
+import html2canvas from 'html2canvas';
+import { canvas2htmlSaver, SendCanvas2Background } from '@src/screenshot';
 // import type { Tab } from '@types/chrome'
 
 type BookmarkDialog = {
@@ -8,17 +10,24 @@ type BookmarkDialog = {
   progress: number;
 };
 
+type TabId = number;
+
 type TabManagerType = {
   isOpen: boolean;
   isUpload: boolean;
   progress: number;
   tabs: chrome.tabs.Tab[];
+  preview: string;
+  tabCanvas: { TabId?: { dataURL: string } };
 };
+
 export const useTabDialogState = create<TabManagerType>(() => ({
   isOpen: true,
   isUpload: false,
   progress: 0,
   tabs: [],
+  preview: '',
+  tabCanvas: {},
 }));
 export const setTabDialogState = (state: Partial<TabManagerType>) => {
   useTabDialogState.setState({ ...useTabDialogState.getState(), ...state });
@@ -46,10 +55,12 @@ export async function jump2Tab(tab: chrome.tabs.Tab) {
   await sendMessage({ greeting: 'jump2Tab', tab });
   // useStorageState.setState({ ...(storage as StorageType) });
 }
+
 export async function getAllTabs() {
   const tabs = (await sendMessage({ greeting: 'getAllTabs' })) as chrome.tabs.Tab[];
   console.log({ tabs });
   setTabDialogState({ tabs });
+  return tabs;
 }
 
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
@@ -66,6 +77,9 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       break;
     case 'tabAssistant':
       setTabDialogState({ tabs: request.tabs, isOpen: true });
+      break;
+    case 'html2canvas':
+      canvas2htmlSaver(request.tab);
       break;
   }
 });

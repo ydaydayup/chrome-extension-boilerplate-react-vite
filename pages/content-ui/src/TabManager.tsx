@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   CommandDialog,
   CommandEmpty,
@@ -7,24 +7,26 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  Dialog,
+  DialogContent,
   lucide,
 } from '@extension/ui';
 import { getAllTabs, jump2Tab, setTabDialogState, useTabDialogState } from '@src/state';
+import { canvas2htmlRetriever, SendCanvas2Background } from '@src/screenshot';
 
 const { Calculator, Calendar, CreditCard, Settings, Smile, User } = lucide;
 
 export function SearchComponent() {
-  useEffect(() => {
-    getAllTabs();
-  }, []);
-  const { isOpen, isUpload, tabs } = useTabDialogState(state => state);
-  const setOpen = (isOpen: boolean) => {
-    setTabDialogState({ isOpen });
-  };
+  const { isOpen, tabs } = useTabDialogState(state => state);
   const [isInputFocused, setIsInputFocused] = React.useState(false);
 
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
-  React.useEffect(() => {
+  useEffect(() => {
+    getAllTabs().then(tabs => {
+      SendCanvas2Background(tabs);
+    });
+  }, []);
+  useEffect(() => {
     function isAlphaNumeric(key: string) {
       // 不区分大小写的版本
       if (key.length !== 1) return false;
@@ -33,28 +35,26 @@ export function SearchComponent() {
 
     const down = (e: KeyboardEvent) => {
       if (!isInputFocused) return;
-      if (!isInputFocused) return;
-      // if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-      //   // e.preventDefault()
-      //   // setOpen((open) => !open)
-      // }
       e.stopPropagation();
-      // if (isAlphaNumeric(e.key)) {
-      //   console.log('>>>>>>.');
-      //   e.stopPropagation();
-      // }
     };
     document.addEventListener('keydown', down);
     return () => document.removeEventListener('keydown', down);
   }, [isOpen, isInputFocused]);
+
+  const setOpen = (isOpen: boolean) => {
+    setTabDialogState({ isOpen });
+  };
+
   const mappedChildren = tabs.map(tab => (
     <CommandItem
+      onMouseEnter={() => canvas2htmlRetriever(tab)}
       key={tab.id}
       onSelect={() => {
         jump2Tab(tab);
       }}>
       <Calendar className="mr-2 h-4 w-4" />
       <div>
+        <span>{tab.id || ''}</span>
         <span>{tab.title || ''}</span>
         <span> {tab.url || ''}</span>
       </div>
@@ -76,7 +76,7 @@ export function SearchComponent() {
     <>
       <div className={'dark text-primary'} ref={setContainer}>
         <CommandDialog
-          commandProps={{ filter }}
+          commandProps={{ filter, label: '=====' }}
           modal={false}
           open={isOpen}
           contentProps={{ container: container }}
@@ -104,6 +104,47 @@ export function SearchComponent() {
           </CommandList>
         </CommandDialog>
       </div>
+    </>
+  );
+}
+
+export function Preview() {
+  const { isOpen, tabs } = useTabDialogState(state => state);
+  const { preview } = useTabDialogState(state => state);
+  // const [ isOpen, setIsOpen ] = useState<boolean>(Boolean(preview));
+  const [container, setContainer] = React.useState<HTMLElement | null>(null);
+  const setOpen = (isOpen: boolean) => {
+    // setIsOpen(isOpen)
+  };
+
+  console.log({ preview });
+  return (
+    <div className={'dark text-primary'}>
+      <div ref={setContainer} />
+      <Dialog open={isOpen} modal={false} onOpenChange={setOpen}>
+        <DialogContent container={container} className="z-[9998] max-w-full max-h-full">
+          <img src={preview} alt={''}></img>
+          {/*<div className={'h-20 w-20 bg-green-300 overflow-y-scroll'}>*/}
+          {/*  <div className={'h-60 w-20 bg-green-30'}></div>*/}
+          {/*</div>*/}
+          {/*<DialogHeader>*/}
+          {/*  <DialogTitle>书签助手</DialogTitle>*/}
+          {/*  <DialogDescription>点击收集书签信息既可以把书签存到向量库中</DialogDescription>*/}
+          {/*</DialogHeader>*/}
+          {/*<Button onClick={addBookmarks2Datasets}>收集书签信息</Button>*/}
+          {/*<InputForm></InputForm>*/}
+          {/*<DialogFooter>/!*<Button type="submit">Save changes</Button>*!/</DialogFooter>*/}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+export function TabCommand() {
+  return (
+    <>
+      <SearchComponent></SearchComponent>
+      <Preview></Preview>
     </>
   );
 }
