@@ -22,7 +22,7 @@ type TabManagerType = {
 };
 
 export const useTabDialogState = create<TabManagerType>(() => ({
-  isOpen: true,
+  isOpen: false,
   isUpload: false,
   progress: 0,
   tabs: [],

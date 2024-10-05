@@ -55,8 +55,28 @@ async function canvas2htmlRetriever(tab: chrome.tabs.Tab) {
   return await chrome.storage.session.get({ [tab.id as number]: { dataURL: null } });
 }
 
+// class CacheStorage {
+//
+// }
+// const cacheStorage = {};
+function getCurrentTabId(callback: (tab: chrome.tabs.Tab) => void) {
+  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+    if (callback) callback(tabs.length ? tabs[0] : null);
+  });
+}
+
 async function canvas2htmlSaver(tab: chrome.tabs.Tab, dataURL) {
-  chrome.storage.session.set({ [tab.id as number]: { dataURL: dataURL } });
+  // cacheStorage = {}
+  // chrome.storage.session.set({ [tab.id as number]: { dataURL: dataURL } });
+  getCurrentTabId(tab => {
+    if (!(tab && tab.id)) {
+      return;
+    }
+    chrome.tabs.sendMessage(tab.id, {
+      message: '打开书签面板',
+      tabCanvas: { [tab.id as number]: { dataURL: dataURL } },
+    });
+  });
 }
 
 async function canvasAllTabs(tabs: chrome.tabs.Tab[]) {

@@ -22,8 +22,8 @@ export function SearchComponent() {
 
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
   useEffect(() => {
-    getAllTabs().then(tabs => {
-      // SendCanvas2Background(tabs);
+    getAllTabs().then(async tabs => {
+      await SendCanvas2Background(tabs);
     });
   }, []);
   useEffect(() => {
