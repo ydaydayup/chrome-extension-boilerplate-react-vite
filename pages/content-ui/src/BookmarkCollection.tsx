@@ -87,7 +87,7 @@ export function BookmarkCollection() {
     <div className={'dark text-primary'}>
       <div ref={setContainer} />
       <Dialog open={isOpen} modal={false} onOpenChange={setOpen}>
-        <DialogContent container={container} className="z-[9999]">
+        <DialogContent portalProps={{ container }} className="z-[9999]">
           <div className={'h-20 w-20 bg-green-300 overflow-y-scroll'}>
             <div className={'h-60 w-20 bg-green-30'}></div>
           </div>

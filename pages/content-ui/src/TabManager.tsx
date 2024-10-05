@@ -23,7 +23,7 @@ export function SearchComponent() {
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
   useEffect(() => {
     getAllTabs().then(tabs => {
-      SendCanvas2Background(tabs);
+      // SendCanvas2Background(tabs);
     });
   }, []);
   useEffect(() => {
@@ -79,7 +79,7 @@ export function SearchComponent() {
           commandProps={{ filter, label: '=====' }}
           modal={false}
           open={isOpen}
-          contentProps={{ container: container }}
+          contentProps={{ portalProps: { container: container } }}
           onOpenChange={setOpen}>
           <CommandInput
             onFocus={() => setIsInputFocused(true)}
@@ -122,18 +122,11 @@ export function Preview() {
     <div className={'dark text-primary'}>
       <div ref={setContainer} />
       <Dialog open={isOpen} modal={false} onOpenChange={setOpen}>
-        <DialogContent container={container} className="z-[9998] max-w-full max-h-full">
+        <DialogContent
+          portalProps={{ container }}
+          closeProps={{ closeClassName: 'hidden' }}
+          className="bg-transparent border-transparent z-[9998] max-w-full max-h-full">
           <img src={preview} alt={''}></img>
-          {/*<div className={'h-20 w-20 bg-green-300 overflow-y-scroll'}>*/}
-          {/*  <div className={'h-60 w-20 bg-green-30'}></div>*/}
-          {/*</div>*/}
-          {/*<DialogHeader>*/}
-          {/*  <DialogTitle>书签助手</DialogTitle>*/}
-          {/*  <DialogDescription>点击收集书签信息既可以把书签存到向量库中</DialogDescription>*/}
-          {/*</DialogHeader>*/}
-          {/*<Button onClick={addBookmarks2Datasets}>收集书签信息</Button>*/}
-          {/*<InputForm></InputForm>*/}
-          {/*<DialogFooter>/!*<Button type="submit">Save changes</Button>*!/</DialogFooter>*/}
         </DialogContent>
       </Dialog>
     </div>
