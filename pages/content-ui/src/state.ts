@@ -19,6 +19,20 @@ type TabManagerType = {
   tabs: chrome.tabs.Tab[];
   preview: string;
   tabCanvas: { TabId?: { dataURL: string } };
+  previewId: number | null;
+  previewTitle: string;
+  previewUrl: string;
+};
+
+type CommonDialogStateType = {
+  activeTab: chrome.tabs.Tab | null;
+};
+export const commonDialogState = create<CommonDialogStateType>(() => ({
+  activeTab: null,
+}));
+
+export const setCommonDialogState = (state: Partial<CommonDialogStateType>) => {
+  commonDialogState.setState({ ...commonDialogState.getState(), ...state });
 };
 
 export const useTabDialogState = create<TabManagerType>(() => ({
@@ -28,12 +42,14 @@ export const useTabDialogState = create<TabManagerType>(() => ({
   tabs: [],
   preview: '',
   tabCanvas: {},
+  previewId: null,
+  previewTitle: '',
+  previewUrl: '',
 }));
 export const setTabDialogState = (state: Partial<TabManagerType>) => {
   useTabDialogState.setState({ ...useTabDialogState.getState(), ...state });
 };
 export const useBookmarkDialogState = create<BookmarkDialog>(() => ({
-  // todo
   isOpen: false,
   isUpload: false,
   progress: 0,
@@ -53,7 +69,13 @@ export async function createStorage() {
 
 export async function jump2Tab(tab: chrome.tabs.Tab) {
   await sendMessage({ greeting: 'jump2Tab', tab });
-  // useStorageState.setState({ ...(storage as StorageType) });
+}
+
+export async function getActiveTab(): Promise<chrome.tabs.Tab> {
+  console.log('getActiveTab run');
+  const activeTab = (await sendMessage({ greeting: 'getActiveTab' })) as chrome.tabs.Tab;
+  setCommonDialogState({ activeTab });
+  return activeTab;
 }
 
 export async function getAllTabs() {

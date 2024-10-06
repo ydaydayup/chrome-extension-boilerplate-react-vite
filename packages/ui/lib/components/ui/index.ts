@@ -7,3 +7,4 @@ export * from './form';
 export * from './toast';
 export * from './progress';
 export * from './command';
+export * from './avatar';

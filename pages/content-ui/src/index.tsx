@@ -30,13 +30,6 @@ if (navigator.userAgent.includes('Firefox')) {
   globalStyleSheet.replaceSync(tailwindcssOutput);
   shadowRoot.adoptedStyleSheets = [globalStyleSheet];
 }
-// styleIntoShadow.innerHTML = `
-//           <style>
-//           ${globalCSSStyles}
-//
-//           </style>
-//           <div>I'm in the shadow root and my color is green.</div>
-//         `;
-// shadowRoot.appendChild(styleIntoShadow)
+
 shadowRoot.appendChild(rootIntoShadow);
 createRoot(rootIntoShadow).render(<App />);

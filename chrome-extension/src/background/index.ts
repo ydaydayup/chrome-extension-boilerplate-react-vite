@@ -2,7 +2,6 @@ import 'webextension-polyfill';
 import { addText, getAllCollectionList, getUrlHtml, searchTest } from './fastgpt';
 import type { OnClickData } from '@types/chrome';
 import { getHtmlTextSummary } from '@src/background/kimi';
-import { as } from 'vitest/dist/chunks/reporters.WnPwkmgA';
 
 async function getAllTabs(): Promise<chrome.tabs.Tab[]> {
   const tabs = await chrome.tabs.query({});
@@ -52,37 +51,33 @@ async function setDatasetId(datasetId: string) {
 }
 
 async function canvas2htmlRetriever(tab: chrome.tabs.Tab) {
-  return await chrome.storage.session.get({ [tab.id as number]: { dataURL: null } });
-}
-
-// class CacheStorage {
-//
-// }
-// const cacheStorage = {};
-function getCurrentTabId(callback: (tab: chrome.tabs.Tab) => void) {
-  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    if (callback) callback(tabs.length ? tabs[0] : null);
-  });
+  return await chrome.storage.local.get({ [tab.id as number]: { dataURL: null } });
 }
 
 async function canvas2htmlSaver(tab: chrome.tabs.Tab, dataURL) {
-  // cacheStorage = {}
-  // chrome.storage.session.set({ [tab.id as number]: { dataURL: dataURL } });
-  getCurrentTabId(tab => {
-    if (!(tab && tab.id)) {
-      return;
-    }
-    chrome.tabs.sendMessage(tab.id, {
-      message: '打开书签面板',
-      tabCanvas: { [tab.id as number]: { dataURL: dataURL } },
-    });
-  });
+  chrome.storage.local.set({ [tab.id as number]: { dataURL: dataURL } });
+}
+
+async function activeTab() {
+  const [tab] = await chrome.tabs.query({ currentWindow: true, active: true });
+  return tab;
 }
 
 async function canvasAllTabs(tabs: chrome.tabs.Tab[]) {
   for (const tab of tabs) {
     chrome.tabs.sendMessage(tab.id, { message: 'html2canvas', tab });
   }
+  getAllTabs().then(async tabs => {
+    const localKeys = Object.keys(await chrome.storage.local.get());
+    for (const tab of tabs) {
+      const tabId = tab?.id?.toString();
+      if (!tabId || localKeys.includes(tabId)) {
+        continue;
+      }
+      chrome.storage.local.remove(tabId);
+      console.log('remove', { tabId });
+    }
+  });
   return tabs;
 }
 
@@ -134,6 +129,9 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     case 'jump2Tab':
       sendResponseMessage(jump2Tab(request.tab), sendResponse);
       break;
+    case 'getActiveTab':
+      sendResponseMessage(activeTab(), sendResponse);
+      break;
     default:
       sendResponse('我是后台，我已收到你的消息：' + JSON.stringify(request));
   }
@@ -152,6 +150,14 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'TabsManager',
     contexts: ['page'],
   });
+  console.log('===============================');
+});
+
+chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
+  if (changeInfo.status !== 'complete') {
+    return;
+  }
+  getAllTabs();
 });
 
 chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.Tab) => {
@@ -161,18 +167,12 @@ chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.
 });
 // Unchecked runtime.lastError: Extensions using event pages or Service Workers
 // must pass an id parameter to chrome.contextMenus.create
-chrome.contextMenus.onClicked.addListener(async function (info: OnClickData, tab?: tabs.Tab) {
+chrome.contextMenus.onClicked.addListener(async function (info: OnClickData, tab?: chrome.tabs.Tab) {
   const storage = await getStorage();
-  // console.table(storage, info, tab);
-  await chrome.tabs.sendMessage(tab.id, { message: 'getStorage', storage: storage });
-
+  chrome.tabs.sendMessage(tab.id, { message: 'getStorage', storage: storage });
   if (info.menuItemId === BookmarksManagerId) {
-    await chrome.tabs.sendMessage(tab.id, { message: '打开书签面板' });
+    chrome.tabs.sendMessage(tab.id, { message: '打开书签面板' });
   } else if (info.menuItemId === TabsManagerId) {
-    await chrome.tabs.sendMessage(tab.id, { message: TabsManagerId });
+    chrome.tabs.sendMessage(tab.id, { message: TabsManagerId });
   }
-  // chrome.tabs.sendMessage(tab.id, { message: TabsManagerId });
-  // console.log('收到消息：');
-  // 注意不能使用location.href，因为location是属于background的window对象
-  // chrome.tabs.create({ url: 'https://www.baidu.com/s?ie=utf-8&wd=' + encodeURI(info.selectionText) });
 });
