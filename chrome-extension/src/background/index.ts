@@ -2,11 +2,8 @@ import 'webextension-polyfill';
 import { addText, getAllCollectionList, getUrlHtml, searchTest } from './fastgpt';
 import type { OnClickData } from '@types/chrome';
 import { getHtmlTextSummary } from '@src/background/kimi';
-
-async function getAllTabs(): Promise<chrome.tabs.Tab[]> {
-  const tabs = await chrome.tabs.query({});
-  return tabs;
-}
+import { mostFrequent } from '@src/background/history';
+import { activeTab, canvasAllTabs, getAllTabs, jump2Tab } from '@src/background/tab';
 
 async function getBookmarkTreeNodes() {
   return new Promise((resolve, reject) => {
@@ -56,34 +53,6 @@ async function canvas2htmlRetriever(tab: chrome.tabs.Tab) {
 
 async function canvas2htmlSaver(tab: chrome.tabs.Tab, dataURL) {
   chrome.storage.local.set({ [tab.id as number]: { dataURL: dataURL } });
-}
-
-async function activeTab() {
-  const [tab] = await chrome.tabs.query({ currentWindow: true, active: true });
-  return tab;
-}
-
-async function canvasAllTabs(tabs: chrome.tabs.Tab[]) {
-  for (const tab of tabs) {
-    chrome.tabs.sendMessage(tab.id, { message: 'html2canvas', tab });
-  }
-  getAllTabs().then(async tabs => {
-    const localKeys = Object.keys(await chrome.storage.local.get());
-    for (const tab of tabs) {
-      const tabId = tab?.id?.toString();
-      if (!tabId || localKeys.includes(tabId)) {
-        continue;
-      }
-      chrome.storage.local.remove(tabId);
-      console.log('remove', { tabId });
-    }
-  });
-  return tabs;
-}
-
-async function jump2Tab(tab: chrome.tabs.Tab) {
-  chrome.tabs.update(tab.id, { active: true });
-  chrome.windows.update(tab.windowId, { focused: true });
 }
 
 // 监听来自content-script的消息
@@ -150,14 +119,7 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'TabsManager',
     contexts: ['page'],
   });
-  console.log('===============================');
-});
-
-chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
-  if (changeInfo.status !== 'complete') {
-    return;
-  }
-  getAllTabs();
+  mostFrequent();
 });
 
 chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.Tab) => {

@@ -38,6 +38,7 @@ const manifest = deepmerge(
       'contextMenus',
       'storage',
       'unlimitedStorage',
+      'history',
     ],
     // options_page: 'options/index.html',
     background: {

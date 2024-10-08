@@ -107,7 +107,7 @@ export function SearchComponent() {
       data-tab={tab.id}
       data-title={tab.title}
       data-url={tab.url}
-      className={'grid grid-cols-2  whitespace-nowrap text-ellipsis'}
+      className={'cursor-pointer grid grid-cols-2  whitespace-nowrap text-ellipsis'}
       onSelect={() => {
         jump2Tab(tab);
       }}>
