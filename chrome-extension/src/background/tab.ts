@@ -1,17 +1,28 @@
-export async function getAllTabs(): Promise<chrome.tabs.Tab[]> {
-  const tabs = await chrome.tabs.query({});
-  tabs.sort((a, b) => {
-    return (b.lastAccessed || 0) - (a.lastAccessed || 0);
-  });
-  return tabs;
+function faviconURL(u) {
+  const url = new URL(chrome.runtime.getURL('/_favicon/'));
+  url.searchParams.set('pageUrl', u); // this encodes the URL as well
+  url.searchParams.set('size', '32');
+  return url.toString();
 }
 
-chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
-  if (changeInfo.status !== 'complete') {
-    return;
-  }
-  getAllTabs();
-});
+type NewTab = chrome.tabs.Tab & { favIconURL?: string };
+
+export async function getAllTabs(): Promise<NewTab[]> {
+  const tabs = await chrome.tabs.query({});
+  const tabsWithFavIcon: NewTab[] = tabs.map(tab => {
+    return { ...tab, favIconURL: faviconURL(tab.url) } as NewTab;
+  });
+  tabsWithFavIcon.sort((a, b) => {
+    return (b.lastAccessed || 0) - (a.lastAccessed || 0);
+  });
+  return tabsWithFavIcon;
+}
+
+export const tabDataPrepare = () => {
+  getAllTabs().then(tabs => {
+    canvasAllTabs(tabs);
+  });
+};
 
 export async function activeTab() {
   const [tab] = await chrome.tabs.query({ currentWindow: true, active: true });

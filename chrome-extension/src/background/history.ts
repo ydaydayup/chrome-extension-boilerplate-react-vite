@@ -40,8 +40,8 @@ export const mostFrequent = () => {
     },
     (historyItems: chrome.history.HistoryItem[]) => {
       const frequencyMap = getFrequentVisits(historyItems);
-      console.log({ frequencyMap });
       const mostFrequentUrls = getMostFrequentUrls(frequencyMap, 5);
+      console.log({ frequencyMap });
       console.log(mostFrequentUrls);
       // 显示或使用这些最常访问的URL
     },

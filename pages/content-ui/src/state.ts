@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { sendMessage } from '@src/extensonWrapper';
-import html2canvas from 'html2canvas';
-import { canvas2htmlSaver, SendCanvas2Background } from '@src/screenshot';
+import { canvas2htmlSaver } from '@src/screenshot';
 // import type { Tab } from '@types/chrome'
 
 type BookmarkDialog = {
@@ -11,12 +10,12 @@ type BookmarkDialog = {
 };
 
 type TabId = number;
-
+type NewTab = chrome.tabs.Tab & { favIconURL?: string };
 type TabManagerType = {
   isOpen: boolean;
   isUpload: boolean;
   progress: number;
-  tabs: chrome.tabs.Tab[];
+  tabs: NewTab[];
   preview: string;
   tabCanvas: { TabId?: { dataURL: string } };
   previewId: number | null;
@@ -76,13 +75,6 @@ export async function getActiveTab(): Promise<chrome.tabs.Tab> {
   const activeTab = (await sendMessage({ greeting: 'getActiveTab' })) as chrome.tabs.Tab;
   setCommonDialogState({ activeTab });
   return activeTab;
-}
-
-export async function getAllTabs() {
-  const tabs = (await sendMessage({ greeting: 'getAllTabs' })) as chrome.tabs.Tab[];
-  console.log({ tabs });
-  setTabDialogState({ tabs });
-  return tabs;
 }
 
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {

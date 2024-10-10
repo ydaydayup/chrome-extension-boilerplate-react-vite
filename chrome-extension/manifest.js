@@ -39,6 +39,7 @@ const manifest = deepmerge(
       'storage',
       'unlimitedStorage',
       'history',
+      'favicon',
     ],
     // options_page: 'options/index.html',
     background: {
@@ -82,8 +83,9 @@ const manifest = deepmerge(
     // devtools_page: 'devtools/index.html',
     web_accessible_resources: [
       {
-        resources: ['*.js', '*.css', '*.svg', 'icon-128.png', 'icon-34.png'],
+        resources: ['*.js', '*.css', '*.svg', 'icon-128.png', 'icon-34.png', '_favicon/*'],
         matches: ['*://*/*'],
+        extension_ids: ['*'],
       },
     ],
   },

@@ -9,13 +9,11 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandShortcut,
   Dialog,
   DialogContent,
-  lucide,
 } from '@extension/ui';
-import { getActiveTab, getAllTabs, jump2Tab, setTabDialogState, useTabDialogState } from '@src/state';
-import { canvas2htmlRetriever, SendCanvas2Background } from '@src/screenshot';
+import { getActiveTab, jump2Tab, setTabDialogState, useTabDialogState } from '@src/state';
+import { canvas2htmlRetriever } from '@src/screenshot';
 
 export function FavIconAvatar({
   favIconUrl,
@@ -36,14 +34,13 @@ export function SearchComponent() {
   const [isInputFocused, setIsInputFocused] = React.useState(true);
   const activeTab = useRef<chrome.tabs.Tab | null>(null);
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
+  console.assert({ tabs });
   useEffect(() => {
     if (!isOpen) {
       return;
     }
+    // 打开面板会默认选中第一个 获取image
     canvas2htmlRetriever({ id: tabs[0].id as number });
-    getAllTabs().then(async tabs => {
-      await SendCanvas2Background(tabs);
-    });
     getActiveTab().then(tab => (activeTab.current = tab));
   }, [isOpen]);
   useEffect(() => {
@@ -85,7 +82,6 @@ export function SearchComponent() {
             setTabDialogState({ preview: '', previewTitle: '', previewUrl: '' });
             return;
           }
-          // setTabDialogState({ previewTitle: tabTitle, previewUrl: tabUrl });
           canvas2htmlRetriever({ id: parseInt(tabId as string, 10) });
         }
       });
@@ -109,10 +105,14 @@ export function SearchComponent() {
       data-url={tab.url}
       className={'cursor-pointer grid grid-cols-2  whitespace-nowrap text-ellipsis'}
       onSelect={() => {
-        jump2Tab(tab);
+        jump2Tab(tab).then(() => {
+          setOpen(false);
+        });
       }}>
       <div className={'row-start-1 col-span-2 gap-x-1 items-center grid grid-cols-[auto_1fr]'}>
-        <FavIconAvatar favIconUrl={tab.favIconUrl || ''} className={'row-start-1 w-4 h-4'}></FavIconAvatar>
+        <FavIconAvatar
+          favIconUrl={tab.favIconURL || tab.favIconUrl || ''}
+          className={'row-start-1 w-4 h-4'}></FavIconAvatar>
         <span className={'row-start-1'}>{tab.title || ''}</span>
         <div className={'hidden row-start-1'}>{tab.id || ''}</div>
       </div>

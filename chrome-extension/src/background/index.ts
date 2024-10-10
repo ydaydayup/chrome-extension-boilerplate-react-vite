@@ -3,7 +3,7 @@ import { addText, getAllCollectionList, getUrlHtml, searchTest } from './fastgpt
 import type { OnClickData } from '@types/chrome';
 import { getHtmlTextSummary } from '@src/background/kimi';
 import { mostFrequent } from '@src/background/history';
-import { activeTab, canvasAllTabs, getAllTabs, jump2Tab } from '@src/background/tab';
+import { activeTab, getAllTabs, jump2Tab, tabDataPrepare } from '@src/background/tab';
 
 async function getBookmarkTreeNodes() {
   return new Promise((resolve, reject) => {
@@ -86,9 +86,9 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     case 'getAllTabs':
       sendResponseMessage(getAllTabs(), sendResponse);
       break;
-    case 'canvas2htmlSender':
-      sendResponseMessage(canvasAllTabs(request.tabs), sendResponse);
-      break;
+    // case 'canvas2htmlSender':
+    //   sendResponseMessage(canvasAllTabs(request.tabs), sendResponse);
+    //   break;
     case 'canvas2htmlSaver':
       sendResponseMessage(canvas2htmlSaver(request.tab, request.dataURL), sendResponse);
       break;
@@ -120,6 +120,7 @@ chrome.runtime.onInstalled.addListener(() => {
     contexts: ['page'],
   });
   mostFrequent();
+  tabDataPrepare();
 });
 
 chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.Tab) => {
@@ -127,14 +128,21 @@ chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.
     await chrome.tabs.sendMessage(tab?.id as number, { message: 'tabAssistant', tabs: await getAllTabs() });
   }
 });
-// Unchecked runtime.lastError: Extensions using event pages or Service Workers
-// must pass an id parameter to chrome.contextMenus.create
-chrome.contextMenus.onClicked.addListener(async function (info: OnClickData, tab?: chrome.tabs.Tab) {
+
+chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
+  console.log({ changeInfo });
+  if (changeInfo.status !== 'complete') {
+    return;
+  }
+  tabDataPrepare();
+});
+
+chrome.contextMenus.onClicked.addListener(async function (info: OnClickData, tab: chrome.tabs.Tab) {
   const storage = await getStorage();
-  chrome.tabs.sendMessage(tab.id, { message: 'getStorage', storage: storage });
+  chrome.tabs.sendMessage(tab.id!, { message: 'getStorage', storage: storage });
   if (info.menuItemId === BookmarksManagerId) {
-    chrome.tabs.sendMessage(tab.id, { message: '打开书签面板' });
+    chrome.tabs.sendMessage(tab.id!, { message: '打开书签面板' });
   } else if (info.menuItemId === TabsManagerId) {
-    chrome.tabs.sendMessage(tab.id, { message: TabsManagerId });
+    chrome.tabs.sendMessage(tab.id!, { message: TabsManagerId });
   }
 });

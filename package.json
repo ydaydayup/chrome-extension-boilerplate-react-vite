@@ -33,6 +33,7 @@
     "test": "vitest --watch=false",
     "test-removeALL": "vitest  --run --testNamePattern=removeALL  --watch=false",
     "test-kimiApi": "vitest --run --testNamePattern=kimiApi import { Tabs } from '@types/chrome'; --watch=false",
+    "test-ui": "vitest --run  ./pages/content-ui/src/ --watch=false",
     "import { Tabs } from '@types/chrome';coverage": "vitest run --coverage"
   },
   "dependencies": {

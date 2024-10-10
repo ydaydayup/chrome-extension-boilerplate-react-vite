@@ -1,12 +1,12 @@
-import html2canvas from 'html2canvas';
 import { sendMessage } from '@src/extensonWrapper';
 import { setTabDialogState } from '@src/state';
 import * as htmlToImage from 'html-to-image';
-// import { toPng, toJpeg, toBlob, toPixelData, toSvg } from 'html-to-image';
+import download from 'downloadjs';
+// import { toPng, toJpeg, toBlob, toPixelData, toSvg, download } from 'html-to-image';
 
-export async function SendCanvas2Background(tabs) {
-  return sendMessage({ greeting: 'canvas2htmlSender', tabs });
-}
+// export async function SendCanvas2Background(tabs) {
+//   return sendMessage({ greeting: 'canvas2htmlSender', tabs });
+// }
 
 // export async function canvas2htmlSaver(tab: chrome.tabs.Tab) {
 //   return html2canvas(document.body, {
@@ -26,10 +26,14 @@ export async function SendCanvas2Background(tabs) {
 // }
 
 export async function canvas2htmlSaver(tab: chrome.tabs.Tab) {
-  return htmlToImage.toPng(document.body).then(function (dataURL) {
-    console.log({ dataURL });
-    return sendMessage({ greeting: 'canvas2htmlSaver', dataURL, tab });
-  });
+  return htmlToImage
+    .toPng(document.body, {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    })
+    .then(function (dataURL) {
+      return sendMessage({ greeting: 'canvas2htmlSaver', dataURL, tab });
+    });
 }
 
 export async function canvas2htmlRetriever(tab: { id: number }) {
@@ -37,9 +41,3 @@ export async function canvas2htmlRetriever(tab: { id: number }) {
   console.log({ tabCanvas });
   setTabDialogState({ tabCanvas, preview: tabCanvas[tab.id]?.dataURL });
 }
-
-// export async function getAllTabs() {
-//   const tabs = (await sendMessage({ greeting: 'getAllTabs' })) as chrome.tabs.Tab[];
-//   console.log({ tabs });
-//   setTabDialogState({ tabs });
-// }
