@@ -3,6 +3,18 @@
 @tailwind utilities;
 
 @layer base {
+    .theme-forest {
+        @apply bg-green-900 text-green-100;
+    }
+
+    .theme-ocean {
+        @apply bg-blue-900 text-blue-100;
+    }
+
+    .theme-sunset {
+        @apply bg-orange-900 text-orange-100;
+    }
+
     :root {
         --background: 0 0% 100%;
         --foreground: 20 14.3% 4.1%;

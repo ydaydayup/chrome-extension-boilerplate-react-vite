@@ -2,7 +2,9 @@ import deepmerge from 'deepmerge';
 import type { Config } from 'tailwindcss/types/config';
 import { fontFamily } from 'tailwindcss/defaultTheme';
 import tailwindAnimate from 'tailwindcss-animate';
+import plugin from 'tailwindcss/plugin';
 
+// const plugin = require('tailwindcss/plugin')
 export function withUI(tailwindConfig: Config): Config {
   return deepmerge(
     shadcnConfig,
@@ -82,5 +84,12 @@ const shadcnConfig = {
       },
     },
   },
-  plugins: [tailwindAnimate],
+  plugins: [
+    tailwindAnimate,
+    plugin(function ({ addVariant }) {
+      addVariant('forest', '.theme-forest &');
+      addVariant('ocean', '.theme-ocean &');
+      addVariant('sunset', '.theme-sunset &');
+    }),
+  ],
 };

@@ -134,12 +134,17 @@ export function SearchComponent() {
 
   return (
     <>
-      <div className={'text-primary'} ref={setContainer}>
+      <div className={'text-primary group theme-forest large'} ref={setContainer}>
         <CommandDialog
           commandProps={{ filter }}
           modal={false}
           open={isOpen}
-          contentProps={{ portalProps: { container: container } }}
+          contentProps={{
+            portalProps: {
+              container: container,
+            },
+            className: ' large:max-w-[800px] group-[.theme-forest]:max-w-[900px]',
+          }}
           onOpenChange={setOpen}>
           <CommandInput
             onFocus={() => setIsInputFocused(true)}
