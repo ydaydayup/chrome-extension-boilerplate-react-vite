@@ -4,7 +4,7 @@ import { Command as CommandPrimitive } from 'cmdk';
 import { Search } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent } from '@/lib/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter } from '@/lib/components/ui/dialog';
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -20,21 +20,6 @@ const Command = React.forwardRef<
   />
 ));
 Command.displayName = CommandPrimitive.displayName;
-
-// interface CommandDialogProps extends DialogProps {}
-//
-// const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
-//   return (
-//     <Dialog {...props}>
-//       <DialogContent {...props}  className="overflow-hidden p-0 shadow-lg">
-//         <Command
-//           className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
-//           {children}
-//         </Command>
-//       </DialogContent>
-//     </Dialog>
-//   );
-// };
 
 type CommandDialogProps = DialogProps & {
   contentProps?: React.ComponentPropsWithoutRef<typeof DialogContent>;
@@ -52,6 +37,22 @@ const CommandDialog = ({ children, contentProps, commandProps, ...props }: Comma
           className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
           {children}
         </Command>
+        <DialogFooter className={'flex flex-col-reverse  items-end'}>
+          <button cmdk-raycast-open-trigger="">
+            退出<kbd>Esc</kbd>
+          </button>
+          <hr />
+          <button cmdk-raycast-open-trigger="">
+            关闭标签<kbd>Esc</kbd>
+          </button>
+          <hr />
+          {/*<button cmdk-raycast-open-trigger="">点击跳转标签<kbd>Esc</kbd></button>*/}
+          {/*<hr />*/}
+          <button cmdk-raycast-open-trigger="">
+            预览<kbd>Esc</kbd>
+          </button>
+          <hr />
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

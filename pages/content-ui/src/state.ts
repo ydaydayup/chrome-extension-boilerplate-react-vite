@@ -8,8 +8,8 @@ type BookmarkDialog = {
   isUpload: boolean;
   progress: number;
 };
+type TabId = chrome.tabs.Tab['id'];
 
-type TabId = number;
 type NewTab = chrome.tabs.Tab & { favIconURL?: string };
 type TabManagerType = {
   isOpen: boolean;
@@ -69,6 +69,10 @@ export async function createStorage() {
 export async function jump2Tab(tab: chrome.tabs.Tab) {
   await sendMessage({ greeting: 'jump2Tab', tab });
 }
+
+export const removeTab = async (tabId: TabId) => {
+  await sendMessage({ greeting: 'removeTab', tabId });
+};
 
 export async function getActiveTab(): Promise<chrome.tabs.Tab> {
   console.log('getActiveTab run');

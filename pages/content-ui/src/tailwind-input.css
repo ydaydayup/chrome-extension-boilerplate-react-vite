@@ -2,17 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+
 @layer base {
-    .theme-forest {
-        @apply bg-green-900 text-green-100;
+    .large-panel [cmdk-group-items] {
+        display: grid;
+        @apply grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5
     }
 
-    .theme-ocean {
-        @apply bg-blue-900 text-blue-100;
-    }
-
-    .theme-sunset {
-        @apply bg-orange-900 text-orange-100;
+    .large-panel .command-dialog {
+        display: grid;
+        @apply max-w-full max-h-full h-full
     }
 
     :root {

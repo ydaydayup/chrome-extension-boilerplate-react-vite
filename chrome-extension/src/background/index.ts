@@ -3,7 +3,7 @@ import { addText, getAllCollectionList, getUrlHtml, searchTest } from './fastgpt
 import type { OnClickData } from '@types/chrome';
 import { getHtmlTextSummary } from '@src/background/kimi';
 import { mostFrequent } from '@src/background/history';
-import { activeTab, getAllTabs, jump2Tab, tabDataPrepare } from '@src/background/tab';
+import { activeTab, getAllTabs, jump2Tab, removeTab, tabDataPrepare } from '@src/background/tab';
 
 async function getBookmarkTreeNodes() {
   return new Promise((resolve, reject) => {
@@ -101,6 +101,10 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     case 'getActiveTab':
       sendResponseMessage(activeTab(), sendResponse);
       break;
+    case 'removeTab':
+      sendResponseMessage(removeTab(request.tabId), sendResponse);
+      break;
+
     default:
       sendResponse('我是后台，我已收到你的消息：' + JSON.stringify(request));
   }

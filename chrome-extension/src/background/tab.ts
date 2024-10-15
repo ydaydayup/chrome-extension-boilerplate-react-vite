@@ -12,9 +12,9 @@ export async function getAllTabs(): Promise<NewTab[]> {
   const tabsWithFavIcon: NewTab[] = tabs.map(tab => {
     return { ...tab, favIconURL: faviconURL(tab.url) } as NewTab;
   });
-  tabsWithFavIcon.sort((a, b) => {
-    return (b.lastAccessed || 0) - (a.lastAccessed || 0);
-  });
+  // tabsWithFavIcon.sort((a, b) => {
+  //   return (b.lastAccessed || 0) - (a.lastAccessed || 0);
+  // });
   return tabsWithFavIcon;
 }
 
@@ -24,6 +24,10 @@ export const tabDataPrepare = () => {
   });
 };
 
+export const removeTab = async (tabId: chrome.tabs.Tab['id']) => {
+  return chrome.tabs.remove(tabId!);
+};
+
 export async function activeTab() {
   const [tab] = await chrome.tabs.query({ currentWindow: true, active: true });
   return tab;
@@ -31,7 +35,8 @@ export async function activeTab() {
 
 export async function canvasAllTabs(tabs: chrome.tabs.Tab[]) {
   for (const tab of tabs) {
-    chrome.tabs.sendMessage(tab.id, { message: 'html2canvas', tab });
+    if (!tab.active) continue;
+    chrome.tabs.sendMessage(tab.id!, { message: 'html2canvas', tab });
   }
   getAllTabs().then(async tabs => {
     const localKeys = Object.keys(await chrome.storage.local.get());
@@ -40,7 +45,7 @@ export async function canvasAllTabs(tabs: chrome.tabs.Tab[]) {
       if (!tabId || localKeys.includes(tabId)) {
         continue;
       }
-      chrome.storage.local.remove(tabId);
+      chrome.storage.local.remove(tabId!);
       console.log('remove', { tabId });
     }
   });

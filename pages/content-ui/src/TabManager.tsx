@@ -11,9 +11,12 @@ import {
   CommandList,
   Dialog,
   DialogContent,
+  lucide,
 } from '@extension/ui';
-import { getActiveTab, jump2Tab, setTabDialogState, useTabDialogState } from '@src/state';
+import { getActiveTab, jump2Tab, removeTab, setTabDialogState, useTabDialogState } from '@src/state';
 import { canvas2htmlRetriever } from '@src/screenshot';
+
+const { CalendarIcon, RocketIcon } = lucide;
 
 export function FavIconAvatar({
   favIconUrl,
@@ -29,30 +32,41 @@ export function FavIconAvatar({
   );
 }
 
+function isAlphaNumeric(key: string) {
+  // 不区分大小写的版本
+  if (key.length !== 1) return false;
+  return /^[A-Za-z0-9]+$/i.test(key);
+}
+
 export function SearchComponent() {
   const { isOpen, tabs } = useTabDialogState(state => state);
   const [isInputFocused, setIsInputFocused] = React.useState(true);
   const activeTab = useRef<chrome.tabs.Tab | null>(null);
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
-  console.assert({ tabs });
   useEffect(() => {
     if (!isOpen) {
       return;
     }
     // 打开面板会默认选中第一个 获取image
-    canvas2htmlRetriever({ id: tabs[0].id as number });
-    getActiveTab().then(tab => (activeTab.current = tab));
+    const tabId = tabs[0].id;
+    getActiveTab().then(tab => {
+      activeTab.current = tab;
+      if (activeTab.current && tabId! === activeTab.current?.id) {
+        return;
+      }
+      canvas2htmlRetriever({ id: tabs[0].id as number });
+    });
   }, [isOpen]);
   useEffect(() => {
-    // function isAlphaNumeric(key: string) {
-    //   // 不区分大小写的版本
-    //   if (key.length !== 1) return false;
-    //   return /^[A-Za-z0-9]+$/i.test(key);
-    // }
-
     const down = (e: KeyboardEvent) => {
-      if (!isInputFocused) return;
-      e.stopPropagation();
+      // 是输入状态 或者 是字母 阻止默认行为
+      if (e.key === 'Escape' && isOpen) {
+        setOpen(false);
+        return;
+      }
+      if (isInputFocused || isAlphaNumeric(e.key)) {
+        e.stopPropagation();
+      }
     };
     document.addEventListener('keydown', down);
     return () => document.removeEventListener('keydown', down);
@@ -73,8 +87,8 @@ export function SearchComponent() {
             return;
           }
           const tabId = target.getAttribute('data-tab');
-          const tabTitle = target.getAttribute('data-title') || '';
-          const tabUrl = target.getAttribute('data-url') || '';
+          // const tabTitle = target.getAttribute('data-title') || '';
+          // const tabUrl = target.getAttribute('data-url') || '';
           if (tabId === null) {
             return;
           }
@@ -103,7 +117,22 @@ export function SearchComponent() {
       data-tab={tab.id}
       data-title={tab.title}
       data-url={tab.url}
-      className={'cursor-pointer grid grid-cols-2  whitespace-nowrap text-ellipsis'}
+      className={
+        'cursor-pointer grid grid-cols-2 group-[.large-panel]:max-w-80 group-[.large-panel]:overflow-hidden whitespace-nowrap text-ellipsis'
+      }
+      onMouseDown={(e: React.MouseEvent) => {
+        // 检查是否是鼠标中键（button 属性为 1 表示中键）
+        // console.log({ e });
+        const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);
+        if (e.button === 1 && tabId) {
+          e.preventDefault(); // 阻止默认行为
+          // 在这里添加关闭标签页的逻辑
+          removeTab(tabId).then(() => {
+            // typescript 实现遍历数组，删除tabid
+            setTabDialogState({ tabs: tabs.filter(tab => tab.id !== tabId) });
+          });
+        }
+      }}
       onSelect={() => {
         jump2Tab(tab).then(() => {
           setOpen(false);
@@ -134,7 +163,7 @@ export function SearchComponent() {
 
   return (
     <>
-      <div className={'text-primary group theme-forest large'} ref={setContainer}>
+      <div className={'text-primary group large-panel'} ref={setContainer}>
         <CommandDialog
           commandProps={{ filter }}
           modal={false}
@@ -143,7 +172,7 @@ export function SearchComponent() {
             portalProps: {
               container: container,
             },
-            className: ' large:max-w-[800px] group-[.theme-forest]:max-w-[900px]',
+            className: 'command-dialog ',
           }}
           onOpenChange={setOpen}>
           <CommandInput
@@ -151,19 +180,46 @@ export function SearchComponent() {
             onBlur={() => setIsInputFocused(false)}
             placeholder="Type a command or search..."
           />
-          <CommandList className={'max-h-[80svh]'} ref={setCommandListRef}>
+          <CommandList
+            className={'max-h-[80svh] group-[.large-panel]:max-w-svh group-[.large-panel]:max-h-lvh'}
+            ref={setCommandListRef}>
             <CommandEmpty>No results found.</CommandEmpty>
-            <CommandGroup heading={'tabs'}>{mappedChildren}</CommandGroup>
+            <CommandGroup className={'group-[.large-panel]:max-w-[svw]'} heading={'tabs'}>
+              {mappedChildren}
+            </CommandGroup>
+            {/*<div>            {mappedChildren}*/}
+            {/*</div>*/}
             {/*<CommandGroup heading="Suggestions">*/}
-            {/*  <CommandItem>Calendar</CommandItem>*/}
-            {/*  <CommandItem>Search Emoji</CommandItem>*/}
-            {/*  <CommandItem>Calculator</CommandItem>*/}
+            {/*  <CommandItem>*/}
+            {/*    <CalendarIcon className="mr-2 h-4 w-4" />*/}
+            {/*    <span>Calendar</span>*/}
+            {/*  </CommandItem>*/}
+            {/*  <CommandItem>*/}
+            {/*    <CalendarIcon className="mr-2 h-4 w-4" />*/}
+            {/*    <span>Search Emoji</span>*/}
+            {/*  </CommandItem>*/}
+            {/*  <CommandItem disabled>*/}
+            {/*    <RocketIcon className="mr-2 h-4 w-4" />*/}
+            {/*    <span>Launch</span>*/}
+            {/*  </CommandItem>*/}
             {/*</CommandGroup>*/}
             {/*<CommandSeparator />*/}
             {/*<CommandGroup heading="Settings">*/}
-            {/*  <CommandItem>Profile</CommandItem>*/}
-            {/*  <CommandItem>Billing</CommandItem>*/}
-            {/*  <CommandItem>Settings</CommandItem>*/}
+            {/*  <CommandItem>*/}
+            {/*    <CalendarIcon className="mr-2 h-4 w-4" />*/}
+            {/*    <span>Profile</span>*/}
+            {/*    <CommandShortcut>⌘P</CommandShortcut>*/}
+            {/*  </CommandItem>*/}
+            {/*  <CommandItem>*/}
+            {/*    <CalendarIcon className="mr-2 h-4 w-4" />*/}
+            {/*    <span>Mail</span>*/}
+            {/*    <CommandShortcut>⌘B</CommandShortcut>*/}
+            {/*  </CommandItem>*/}
+            {/*  <CommandItem>*/}
+            {/*    <CalendarIcon className="mr-2 h-4 w-4" />*/}
+            {/*    <span>Settings</span>*/}
+            {/*    <CommandShortcut>⌘S</CommandShortcut>*/}
+            {/*  </CommandItem>*/}
             {/*</CommandGroup>*/}
           </CommandList>
         </CommandDialog>

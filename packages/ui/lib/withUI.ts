@@ -84,12 +84,5 @@ const shadcnConfig = {
       },
     },
   },
-  plugins: [
-    tailwindAnimate,
-    plugin(function ({ addVariant }) {
-      addVariant('forest', '.theme-forest &');
-      addVariant('ocean', '.theme-ocean &');
-      addVariant('sunset', '.theme-sunset &');
-    }),
-  ],
+  plugins: [tailwindAnimate],
 };
