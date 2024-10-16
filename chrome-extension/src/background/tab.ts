@@ -23,8 +23,8 @@ export const tabDataPrepare = () => {
     canvasAllTabs(tabs);
   });
 };
-
-export const removeTab = async (tabId: chrome.tabs.Tab['id']) => {
+type TabId = chrome.tabs.Tab['id'];
+export const removeTab = async (tabId: TabId) => {
   return chrome.tabs.remove(tabId!);
 };
 
@@ -56,3 +56,32 @@ export async function jump2Tab(tab: chrome.tabs.Tab) {
   chrome.tabs.update(tab.id, { active: true });
   chrome.windows.update(tab.windowId, { focused: true });
 }
+
+async function canvas2htmlSaver(tabId: TabId, dataURL) {
+  chrome.storage.local.set({ [tabId as number]: { dataURL: dataURL } });
+}
+
+function capturePage(activeInfo: chrome.tabs.TabActiveInfo) {
+  console.log('Capture Visible Tab; ', activeInfo);
+  // chrome.tabs.query({ currentWindow: true, active: true });
+  // save(tabId);
+  activeTab().then(tab => {
+    console.log({ tab });
+    if (chrome.runtime.lastError) {
+      console.log(chrome.runtime.lastError);
+      return;
+    }
+    chrome.tabs.captureVisibleTab({ format: 'png' }, function (dataUrl) {
+      console.log({ dataUrl });
+      canvas2htmlSaver(activeInfo.tabId, dataUrl);
+    });
+  });
+}
+
+chrome.tabs.onActivated.addListener(function (activeInfo) {
+  capturePage(activeInfo);
+});
+
+chrome.tabs.onZoomChange.addListener(function (ZoomChangeInfo) {
+  capturePage(ZoomChangeInfo);
+});

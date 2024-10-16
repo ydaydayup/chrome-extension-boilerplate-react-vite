@@ -1,7 +1,5 @@
 import { create } from 'zustand';
 import { sendMessage } from '@src/extensonWrapper';
-import { canvas2htmlSaver } from '@src/screenshot';
-// import type { Tab } from '@types/chrome'
 
 type BookmarkDialog = {
   isOpen: boolean;
@@ -57,13 +55,13 @@ export const useBookmarkDialogState = create<BookmarkDialog>(() => ({
 export const setBookmarkDialogState = (state: Partial<BookmarkDialog>) => {
   useBookmarkDialogState.setState({ ...useBookmarkDialogState.getState(), ...state });
 };
-type StorageType = { [key: string]: string };
+type StorageType = { syncStorage?: { [p: string]: any }; localStorage?: { [p: string]: any } };
 
 export const useStorageState = create<StorageType>(() => ({}));
 
 export async function createStorage() {
   const storage: StorageType = (await sendMessage({ greeting: 'getStorage' })) as StorageType;
-  useStorageState.setState({ ...(storage as StorageType) });
+  useStorageState.setState({ ...storage });
 }
 
 export async function jump2Tab(tab: chrome.tabs.Tab) {
@@ -91,13 +89,10 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
       setTabDialogState({ isOpen: true });
       break;
     case 'getStorage':
-      useStorageState.setState({ ...(request.storage as StorageType) });
+      useStorageState.setState({ ...request.storage });
       break;
     case 'tabAssistant':
       setTabDialogState({ tabs: request.tabs, isOpen: true });
-      break;
-    case 'html2canvas':
-      canvas2htmlSaver(request.tab);
       break;
   }
 });

@@ -32,9 +32,10 @@ function sendResponseMessage(result: Promise<unknown>, sendResponse) {
 }
 
 async function getStorage() {
-  const storage = await chrome.storage.sync.get();
-  console.log(storage, 'storage');
-  return storage;
+  const syncStorage = await chrome.storage.sync.get();
+  const localStorage = await chrome.storage.local.get();
+  // console.log(storage, 'storage');
+  return { syncStorage, localStorage };
 }
 
 async function setDatasetId(datasetId: string) {
@@ -49,10 +50,6 @@ async function setDatasetId(datasetId: string) {
 
 async function canvas2htmlRetriever(tab: chrome.tabs.Tab) {
   return await chrome.storage.local.get({ [tab.id as number]: { dataURL: null } });
-}
-
-async function canvas2htmlSaver(tab: chrome.tabs.Tab, dataURL) {
-  chrome.storage.local.set({ [tab.id as number]: { dataURL: dataURL } });
 }
 
 // 监听来自content-script的消息
@@ -86,12 +83,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     case 'getAllTabs':
       sendResponseMessage(getAllTabs(), sendResponse);
       break;
-    // case 'canvas2htmlSender':
-    //   sendResponseMessage(canvasAllTabs(request.tabs), sendResponse);
-    //   break;
-    case 'canvas2htmlSaver':
-      sendResponseMessage(canvas2htmlSaver(request.tab, request.dataURL), sendResponse);
-      break;
+
     case 'canvas2htmlRetriever':
       sendResponseMessage(canvas2htmlRetriever(request.tab), sendResponse);
       break;
