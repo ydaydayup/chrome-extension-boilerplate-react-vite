@@ -34,7 +34,7 @@ export function FavIconAvatar({
 }) {
   return (
     <Avatar {...props}>
-      <AvatarImage src={favIconUrl} alt="@shadcn" />
+      <AvatarImage src={favIconUrl} alt="ICON" />
       <AvatarFallback>CN</AvatarFallback>
     </Avatar>
   );
@@ -121,45 +121,55 @@ export function PreviewComponent() {
 
     return () => observer.disconnect();
   }, [commandListRef]);
-  const mappedChildren = tabs.map(tab => (
-    <CommandItem
-      key={tab.id}
-      data-tab={tab.id}
-      data-title={tab.title}
-      data-url={tab.url}
-      className={
-        'cursor-pointer grid grid-cols-2 w-full whitespace-nowrap text-ellipsis place-items-start content-start'
-      }
-      onMouseDown={(e: React.MouseEvent) => {
-        // 检查是否是鼠标中键（button 属性为 1 表示中键）
-        // console.log({ e });
-        const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);
-        if (e.button === 1 && tabId) {
-          e.preventDefault(); // 阻止默认行为
-          // 在这里添加关闭标签页的逻辑
-          removeTab(tabId).then(() => {
-            // typescript 实现遍历数组，删除tabid
-            setTabDialogState({ tabs: tabs.filter(tab => tab.id !== tabId) });
-          });
+  const PreviewTabsWithDataURL = [];
+  const PreviewTabsWithoutDataURL = [];
+  for (const tab of tabs) {
+    if (localStorage?.[tab.id!]?.dataURL) {
+      PreviewTabsWithDataURL.push(tab);
+    } else {
+      PreviewTabsWithoutDataURL.push(tab);
+    }
+  }
+  const mappedChildren = [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].map(tab => {
+    const favIconUrl = tab.favIconURL || tab.favIconUrl || '';
+    const previewUrl = localStorage?.[tab.id!]?.dataURL || '';
+    return (
+      <CommandItem
+        key={tab.id}
+        data-tab={tab.id}
+        data-title={tab.title}
+        data-url={tab.url}
+        className={
+          'cursor-pointer grid grid-cols-2 w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start'
         }
-      }}
-      onSelect={() => {
-        jump2Tab(tab).then(() => {
-          setOpen(false);
-        });
-      }}>
-      <div className={'row-start-1 col-span-2 gap-x-1 items-center grid grid-cols-[auto_1fr]'}>
-        <FavIconAvatar
-          favIconUrl={tab.favIconURL || tab.favIconUrl || ''}
-          className={'row-start-1 w-4 h-4'}></FavIconAvatar>
-        <span className={'row-start-1'}>{tab.title || ''}</span>
-        <div className={'hidden row-start-1'}>{tab.id || ''}</div>
-      </div>
-      <div className={'col-start-1 col-span-2'}> {tab.url || ''}</div>
-      <img className={'col-start-1 col-span-2'} alt="Logo" src={localStorage?.[tab.id || '']?.dataURL! || ''} />
-      {/*<CommandShortcut>xxx</CommandShortcut>*/}
-    </CommandItem>
-  ));
+        onMouseDown={(e: React.MouseEvent) => {
+          // 检查是否是鼠标中键（button 属性为 1 表示中键）
+          // console.log({ e });
+          const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);
+          if (e.button === 1 && tabId) {
+            e.preventDefault(); // 阻止默认行为
+            // 在这里添加关闭标签页的逻辑
+            removeTab(tabId).then(() => {
+              // typescript 实现遍历数组，删除tabid
+              setTabDialogState({ tabs: tabs.filter(tab => tab.id !== tabId) });
+            });
+          }
+        }}
+        onSelect={() => {
+          jump2Tab(tab).then(() => {
+            setOpen(false);
+          });
+        }}>
+        <div className={'row-start-1 col-span-2 gap-x-1 items-center grid grid-cols-[auto_1fr]'}>
+          <FavIconAvatar favIconUrl={favIconUrl} className={'row-start-1 w-4 h-4'}></FavIconAvatar>
+          <span className={'row-start-1'}>{tab.title || ''}</span>
+          <div className={'hidden row-start-1'}>{tab.id || ''}</div>
+        </div>
+        <div className={'col-start-1 col-span-2'}> {tab.url || ''}</div>
+        {previewUrl ? <img className={'col-start-1 col-span-2'} alt="Logo" src={previewUrl} /> : ''}
+      </CommandItem>
+    );
+  });
   const filter = (value: string, search: string, keywords?: string[]) => {
     const extendValue = (value + ' ' + (keywords ? keywords.join(' ') : '')).toLowerCase();
     const searchKey = search.toLowerCase().split(' ');
@@ -316,6 +326,7 @@ export function SearchComponent() {
       {/*<CommandShortcut>xxx</CommandShortcut>*/}
     </CommandItem>
   ));
+
   const filter = (value: string, search: string, keywords?: string[]) => {
     const extendValue = (value + ' ' + (keywords ? keywords.join(' ') : '')).toLowerCase();
     const searchKey = search.toLowerCase().split(' ');
