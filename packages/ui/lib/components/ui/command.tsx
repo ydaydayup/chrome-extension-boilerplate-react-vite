@@ -5,6 +5,7 @@ import { Search } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogFooter } from '@/lib/components/ui/dialog';
+import { Button } from './button';
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -38,19 +39,19 @@ const CommandDialog = ({ children, contentProps, commandProps, ...props }: Comma
           {children}
         </Command>
         <DialogFooter className={'flex flex-col-reverse  items-end'}>
-          <button cmdk-raycast-open-trigger="">
+          <Button variant="outline" cmdk-raycast-open-trigger="">
             退出<kbd>Esc</kbd>
-          </button>
+          </Button>
           <hr />
-          <button cmdk-raycast-open-trigger="">
-            关闭标签<kbd>Esc</kbd>
-          </button>
+          <Button variant="outline" cmdk-raycast-open-trigger="">
+            关闭标签 <kbd>鼠标中键</kbd>
+          </Button>
           <hr />
           {/*<button cmdk-raycast-open-trigger="">点击跳转标签<kbd>Esc</kbd></button>*/}
           {/*<hr />*/}
-          <button cmdk-raycast-open-trigger="">
-            预览<kbd>Esc</kbd>
-          </button>
+          {/*<Button cmdk-raycast-open-trigger="">*/}
+          {/*  预览<kbd>Esc</kbd>*/}
+          {/*</Button>*/}
           <hr />
         </DialogFooter>
       </DialogContent>

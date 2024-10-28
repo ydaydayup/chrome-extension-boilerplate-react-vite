@@ -3,6 +3,7 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
+  Badge,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
@@ -24,7 +25,7 @@ import {
 } from '@src/state';
 import { canvas2htmlRetriever } from '@src/screenshot';
 
-const { CalendarIcon, RocketIcon } = lucide;
+// const { CalendarIcon, RocketIcon } = lucide;
 
 export function FavIconAvatar({
   favIconUrl,
@@ -87,40 +88,41 @@ export function PreviewComponent() {
   };
   const [commandListRef, setCommandListRef] = useState<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    const observer = new MutationObserver(mutations => {
-      mutations.forEach(mutation => {
-        console.log(mutation);
-        if (mutation.type === 'attributes' && mutation.attributeName === 'aria-selected') {
-          const target = mutation.target as HTMLElement;
-          if (target?.getAttribute('aria-selected') !== 'true') {
-            return;
-          }
-          const tabId = target.getAttribute('data-tab');
-          // const tabTitle = target.getAttribute('data-title') || '';
-          // const tabUrl = target.getAttribute('data-url') || '';
-          if (tabId === null) {
-            return;
-          }
-          if (activeTab.current && tabId === (activeTab.current?.id as number).toString()) {
-            setTabDialogState({ preview: '', previewTitle: '', previewUrl: '' });
-            return;
-          }
-          canvas2htmlRetriever({ id: parseInt(tabId as string, 10) });
-        }
-      });
-    });
+  // useEffect(() => {
+  //   const observer = new MutationObserver(mutations => {
+  //     mutations.forEach(mutation => {
+  //       console.log(mutation);
+  //       if (mutation.type === 'attributes' && mutation.attributeName === 'aria-selected') {
+  //         const target = mutation.target as HTMLElement;
+  //         if (target?.getAttribute('aria-selected') !== 'true') {
+  //           return;
+  //         }
+  //         const tabId = target.getAttribute('data-tab');
+  //         // const tabTitle = target.getAttribute('data-title') || '';
+  //         // const tabUrl = target.getAttribute('data-url') || '';
+  //         if (tabId === null) {
+  //           return;
+  //         }
+  //         if (activeTab.current && tabId === (activeTab.current?.id as number).toString()) {
+  //           setTabDialogState({ preview: '', previewTitle: '', previewUrl: '' });
+  //           return;
+  //         }
+  //         console.log("111")
+  //         canvas2htmlRetriever({ id: parseInt(tabId as string, 10) });
+  //       }
+  //     });
+  //   });
 
-    if (commandListRef) {
-      observer.observe(commandListRef, {
-        attributes: true,
-        subtree: true,
-        attributeFilter: ['aria-selected'],
-      });
-    }
-
-    return () => observer.disconnect();
-  }, [commandListRef]);
+  //   if (commandListRef) {
+  //     observer.observe(commandListRef, {
+  //       attributes: true,
+  //       subtree: true,
+  //       attributeFilter: ['aria-selected'],
+  //     });
+  //   }
+  //
+  //   return () => observer.disconnect();
+  // }, [commandListRef]);
   const PreviewTabsWithDataURL = [];
   const PreviewTabsWithoutDataURL = [];
   for (const tab of tabs) {
@@ -130,28 +132,23 @@ export function PreviewComponent() {
       PreviewTabsWithoutDataURL.push(tab);
     }
   }
-  const mappedChildren = [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].map(tab => {
+  const mappedChildren = [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].map((tab, index, array) => {
     const favIconUrl = tab.favIconURL || tab.favIconUrl || '';
     const previewUrl = localStorage?.[tab.id!]?.dataURL || '';
+
     return (
       <CommandItem
         key={tab.id}
         data-tab={tab.id}
         data-title={tab.title}
         data-url={tab.url}
-        className={
-          'cursor-pointer grid grid-cols-2 w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start'
-        }
+        className={`cursor-pointer grid grid-cols-2 grid-row-2  w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
         onMouseDown={(e: React.MouseEvent) => {
-          // 检查是否是鼠标中键（button 属性为 1 表示中键）
-          // console.log({ e });
           const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);
           if (e.button === 1 && tabId) {
-            e.preventDefault(); // 阻止默认行为
-            // 在这里添加关闭标签页的逻辑
+            e.preventDefault();
             removeTab(tabId).then(() => {
-              // typescript 实现遍历数组，删除tabid
-              setTabDialogState({ tabs: tabs.filter(tab => tab.id !== tabId) });
+              setTabDialogState({ tabs: tabs.filter(t => t.id !== tabId) });
             });
           }
         }}
@@ -160,13 +157,14 @@ export function PreviewComponent() {
             setOpen(false);
           });
         }}>
-        <div className={'row-start-1 col-span-2 gap-x-1 items-center grid grid-cols-[auto_1fr]'}>
-          <FavIconAvatar favIconUrl={favIconUrl} className={'row-start-1 w-4 h-4'}></FavIconAvatar>
+        <div className={'row-span-1 col-span-2 gap-x-1 items-center grid grid-cols-[auto_1fr]'}>
+          <FavIconAvatar favIconUrl={favIconUrl} className={'row-start-1 w-4 h-4'} />
           <span className={'row-start-1'}>{tab.title || ''}</span>
           <div className={'hidden row-start-1'}>{tab.id || ''}</div>
         </div>
-        <div className={'col-start-1 col-span-2'}> {tab.url || ''}</div>
-        {previewUrl ? <img className={'col-start-1 col-span-2'} alt="Logo" src={previewUrl} /> : ''}
+        <div className={'col-start-1 col-span-2'}>{tab.url || ''}</div>
+        {previewUrl && <img className={'col-start-1 col-span-2'} alt="Logo" src={previewUrl} />}
+        <Badge variant="outline">{`窗口#${tab.windowGroup}`}</Badge>
       </CommandItem>
     );
   });
@@ -437,7 +435,7 @@ export function TabCommand() {
     <>
       <PreviewComponent></PreviewComponent>
       {/*<SearchComponent></SearchComponent>*/}
-      <Preview></Preview>
+      {/*<Preview></Preview>*/}
     </>
   );
 }

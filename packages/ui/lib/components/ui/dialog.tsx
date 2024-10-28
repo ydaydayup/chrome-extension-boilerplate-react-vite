@@ -39,7 +39,6 @@ type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.
 const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Content>, DialogContentProps>(
   ({ className = '', portalProps = {}, closeProps = {}, children, ...props }, ref) => {
     const { closeClassName = '', ...closePropsWithoutClassName } = closeProps;
-    console.log({ closeProps, className, portalProps, props });
     return (
       <DialogPortal {...portalProps}>
         <DialogOverlay />

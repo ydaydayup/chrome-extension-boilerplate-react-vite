@@ -125,14 +125,6 @@ chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.
   }
 });
 
-chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
-  console.log({ changeInfo });
-  if (changeInfo.status !== 'complete') {
-    return;
-  }
-  tabDataPrepare();
-});
-
 chrome.contextMenus.onClicked.addListener(async function (info: OnClickData, tab: chrome.tabs.Tab) {
   const storage = await getStorage();
   chrome.tabs.sendMessage(tab.id!, { message: 'getStorage', storage: storage });

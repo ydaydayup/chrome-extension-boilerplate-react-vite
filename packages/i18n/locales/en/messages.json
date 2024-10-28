@@ -1,11 +1,11 @@
 {
   "extensionDescription": {
-    "description": "Smart bookmarks and tabs assistant",
+    "description": "SmartBT",
     "message": "Smart bookmarks and tabs assistant"
   },
   "extensionName": {
     "description": "SmartBT",
-    "message": "Smart bookmarks and tabs assistant"
+    "message": "SmartBT"
   },
   "toggleTheme": {
     "message": "Toggle theme"

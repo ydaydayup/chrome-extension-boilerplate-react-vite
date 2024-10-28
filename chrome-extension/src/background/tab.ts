@@ -40,7 +40,8 @@ export async function canvasAllTabs(tabs: chrome.tabs.Tab[]) {
   }
   getAllTabs().then(async tabs => {
     const localKeys = Object.keys(await chrome.storage.local.get());
-    for (const tab of tabs) {
+    const newTabs = tabs.length > 100 ? tabs.slice(0, tabs.length - 100) : [];
+    for (const tab of newTabs) {
       const tabId = tab?.id?.toString();
       if (!tabId || localKeys.includes(tabId)) {
         continue;
@@ -63,25 +64,52 @@ async function canvas2htmlSaver(tabId: TabId, dataURL) {
 
 function capturePage(activeInfo: chrome.tabs.TabActiveInfo) {
   console.log('Capture Visible Tab; ', activeInfo);
-  // chrome.tabs.query({ currentWindow: true, active: true });
-  // save(tabId);
-  activeTab().then(tab => {
-    console.log({ tab });
-    if (chrome.runtime.lastError) {
-      console.log(chrome.runtime.lastError);
-      return;
-    }
+  setTimeout(function () {
     chrome.tabs.captureVisibleTab({ format: 'png' }, function (dataUrl) {
       console.log({ dataUrl });
+      if (!dataUrl) {
+        return;
+      }
+      if (chrome.runtime.lastError) {
+        console.log(chrome.runtime.lastError);
+        return;
+      }
       canvas2htmlSaver(activeInfo.tabId, dataUrl);
     });
-  });
+  }, 100);
+  // activeTab().then(tab => {
+  //   // https://www.cjavapy.com/article/1978/
+  //   setTimeout(function() {
+  //     chrome.tabs.captureVisibleTab({ format: 'png' }, function(dataUrl) {
+  //       console.log({ dataUrl });
+  //       if (!dataUrl) {
+  //         return;
+  //       }
+  //       if (chrome.runtime.lastError) {
+  //         console.log(chrome.runtime.lastError);
+  //         return;
+  //       }
+  //       canvas2htmlSaver(activeInfo.tabId, dataUrl);
+  //     });
+  //
+  //   }, 100);
+  // });
 }
 
 chrome.tabs.onActivated.addListener(function (activeInfo) {
+  console.log({ activeInfo });
   capturePage(activeInfo);
 });
 
 chrome.tabs.onZoomChange.addListener(function (ZoomChangeInfo) {
+  console.log({ ZoomChangeInfo });
   capturePage(ZoomChangeInfo);
+});
+
+chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
+  console.log({ changeInfo });
+  if (changeInfo.status !== 'complete') {
+    return;
+  }
+  capturePage(tab);
 });

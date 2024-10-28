@@ -20,11 +20,7 @@
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "pnpm lint --fix",
     "prettier": "prettier . --write",
-    "type-check": "tsc --noEmit",
-    "build:tailwindcss": "pnpm tailwindcss -i ./lib/global.css -o ./dist/global.css -m",
-    "build": "pnpm build:tailwindcss && vite build",
-    "build:watch": "concurrently \"cross-env __DEV__=true vite build --mode development\" \"pnpm build:tailwindcss -- -w\"",
-    "dev": "pnpm build:tailwindcss"
+    "type-check": "tsc --noEmit"
   },
   "devDependencies": {
     "@extension/tsconfig": "workspace:*",

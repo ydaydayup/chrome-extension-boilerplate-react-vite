@@ -8,7 +8,7 @@ type BookmarkDialog = {
 };
 type TabId = chrome.tabs.Tab['id'];
 
-type NewTab = chrome.tabs.Tab & { favIconURL?: string };
+type NewTab = chrome.tabs.Tab & { favIconURL?: string; windowGroup?: number };
 type TabManagerType = {
   isOpen: boolean;
   isUpload: boolean;
@@ -85,14 +85,25 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     case '打开书签面板':
       setBookmarkDialogState({ isOpen: true });
       break;
-    case 'TabsManager':
-      setTabDialogState({ isOpen: true });
-      break;
+    // case 'TabsManager':
+    //   setTabDialogState({ isOpen: true });
+    //   break;
     case 'getStorage':
       useStorageState.setState({ ...request.storage });
       break;
-    case 'tabAssistant':
+    case 'tabAssistant': {
+      const tabs = request.tabs as NewTab[];
+      const windowId = new Map<number, number>();
+      let windowNumber = 0;
+      for (const tab of tabs) {
+        if (!windowId.has(tab.windowId)) {
+          windowNumber++;
+          windowId.set(tab.windowId, windowNumber);
+        }
+        tab['windowGroup'] = windowId.get(tab.windowId);
+      }
       setTabDialogState({ tabs: request.tabs, isOpen: true });
       break;
+    }
   }
 });
