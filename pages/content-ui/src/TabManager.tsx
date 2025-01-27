@@ -142,6 +142,7 @@ export function PreviewComponent() {
         data-tab={tab.id}
         data-title={tab.title}
         data-url={tab.url}
+        update
         className={`cursor-pointer grid grid-cols-2 grid-row-2  w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
         onMouseDown={(e: React.MouseEvent) => {
           const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);

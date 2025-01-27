@@ -34,10 +34,10 @@ export async function activeTab() {
 }
 
 export async function canvasAllTabs(tabs: chrome.tabs.Tab[]) {
-  for (const tab of tabs) {
-    if (!tab.active) continue;
-    chrome.tabs.sendMessage(tab.id!, { message: 'html2canvas', tab });
-  }
+  // for (const tab of tabs) {
+  //   if (!tab.active) continue;
+  //   chrome.tabs.sendMessage(tab.id!, { message: 'html2canvas', tab });
+  // }
   getAllTabs().then(async tabs => {
     const localKeys = Object.keys(await chrome.storage.local.get());
     const newTabs = tabs.length > 100 ? tabs.slice(0, tabs.length - 100) : [];
@@ -77,6 +77,7 @@ function capturePage(activeInfo: chrome.tabs.TabActiveInfo) {
       canvas2htmlSaver(activeInfo.tabId, dataUrl);
     });
   }, 100);
+
   // activeTab().then(tab => {
   //   // https://www.cjavapy.com/article/1978/
   //   setTimeout(function() {

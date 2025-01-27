@@ -40,6 +40,7 @@ const manifest = deepmerge(
       'unlimitedStorage',
       'history',
       'favicon',
+      'management',
     ],
     // options_page: 'options/index.html',
     background: {
@@ -66,19 +67,19 @@ const manifest = deepmerge(
       128: 'icon-128.png',
     },
     content_scripts: [
-      {
-        matches: ['http://*/*', 'https://*/*', '<all_urls>'],
-        js: ['content/index.iife.js'],
-      },
+      // {
+      //   matches: ['http://*/*', 'https://*/*', '<all_urls>'],
+      //   js: ['content/index.iife.js'],
+      // },
       {
         matches: ['http://*/*', 'https://*/*', '<all_urls>'],
         js: ['content-ui/index.iife.js'],
         css: ['content-ui/style.css'], // public folder
       },
-      {
-        matches: ['http://*/*', 'https://*/*', '<all_urls>'],
-        css: ['content.css'], // public folder
-      },
+      // {
+      //   matches: ['http://*/*', 'https://*/*', '<all_urls>'],
+      //   css: ['content.css'], // public folder
+      // },
     ],
     // devtools_page: 'devtools/index.html',
     web_accessible_resources: [

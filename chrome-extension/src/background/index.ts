@@ -104,7 +104,51 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 });
 const TabsManagerId = 'TabsManager';
 const BookmarksManagerId = 'BookmarksManager';
-chrome.runtime.onInstalled.addListener(() => {
+
+function checkCommandShortcuts() {
+  chrome.commands.getAll(commands => {
+    let missingShortcuts = [];
+
+    for (let { name, shortcut } of commands) {
+      if (shortcut === '') {
+        missingShortcuts.push(name);
+      }
+    }
+
+    if (missingShortcuts.length > 0) {
+      console.error('快捷键失效', missingShortcuts);
+      // Update the extension UI to inform the user that one or more
+      // commands are currently unassigned.
+    }
+  });
+}
+
+const injectScript = () => {
+  chrome.tabs.query({}, function (tabs) {
+    tabs.forEach(function (tab) {
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: [
+          '/content-ui/index.iife.js',
+          // '/content-ui/style.css',
+          // /content.css'
+        ],
+      });
+      chrome.scripting.insertCSS({
+        files: ['/content-ui/style.css'],
+        target: { tabId: tab.id },
+      });
+    });
+  });
+};
+// chrome.action.onClicked.addListener((tab) => {
+// });
+chrome.management.onEnabled.addListener(function (extension) {
+  injectScript();
+  console.log('Extension enabled:', extension.id);
+});
+
+chrome.runtime.onInstalled.addListener(details => {
   chrome.contextMenus.create({
     id: BookmarksManagerId,
     title: '智能书签面板',
@@ -115,6 +159,10 @@ chrome.runtime.onInstalled.addListener(() => {
     title: 'TabsManager',
     contexts: ['page'],
   });
+  if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
+    checkCommandShortcuts();
+  }
+  injectScript();
   mostFrequent();
   tabDataPrepare();
 });
