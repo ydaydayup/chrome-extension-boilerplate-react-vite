@@ -18,10 +18,11 @@ export async function getAllTabs(): Promise<NewTab[]> {
   return tabsWithFavIcon;
 }
 
-export const tabDataPrepare = () => {
-  getAllTabs().then(tabs => {
-    canvasAllTabs(tabs);
-  });
+export const tabDataPrepare = async () => {
+  await cleanStorage();
+  // getAllTabs().then(tabs => {
+  //   cleanStorage(tabs);
+  // });
 };
 type TabId = chrome.tabs.Tab['id'];
 export const removeTab = async (tabId: TabId) => {
@@ -33,14 +34,16 @@ export async function activeTab() {
   return tab;
 }
 
-export async function canvasAllTabs(tabs: chrome.tabs.Tab[]) {
+export async function cleanStorage() {
   // for (const tab of tabs) {
   //   if (!tab.active) continue;
   //   chrome.tabs.sendMessage(tab.id!, { message: 'html2canvas', tab });
   // }
   getAllTabs().then(async tabs => {
     const localKeys = Object.keys(await chrome.storage.local.get());
-    const newTabs = tabs.length > 100 ? tabs.slice(0, tabs.length - 100) : [];
+    // const newTabs = tabs.length > 100 ? tabs.slice(0, tabs.length - 100) : [];
+    // 原来打算只保留100个
+    const newTabs = tabs;
     for (const tab of newTabs) {
       const tabId = tab?.id?.toString();
       if (!tabId || localKeys.includes(tabId)) {
@@ -77,7 +80,7 @@ function capturePage(activeInfo: chrome.tabs.TabActiveInfo) {
       canvas2htmlSaver(activeInfo.tabId, dataUrl);
     });
   }, 100);
-
+  cleanStorage();
   // activeTab().then(tab => {
   //   // https://www.cjavapy.com/article/1978/
   //   setTimeout(function() {
