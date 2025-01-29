@@ -158,7 +158,7 @@ export function PreviewComponent() {
           data-title={tab.title}
           data-url={tab.url}
           style={style}
-          className={`cursor-pointer grid grid-cols-2 grid-row-2  w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
+          className={`!p-0   cursor-pointer grid grid-cols-2 grid-row-2  w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
           onMouseDown={(e: React.MouseEvent) => {
             const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);
             if (e.button === 1 && tabId) {
@@ -178,16 +178,18 @@ export function PreviewComponent() {
             <span className={'row-start-1 text-xs'}>{tab.title || ''}</span>
             <div className={'hidden row-start-1'}>{tab.id || ''}</div>
           </div>
-          <div className={'col-start-1 col-span-2 text-xs'}>{tab.url || ''}</div>
+          <div className={'col-start-1 col-span-2 '} style={{ fontSize: '0.6rem' }}>
+            {tab.url || ''}
+          </div>
           {previewUrl && <img className={'col-start-1 col-span-2'} alt="Logo" src={previewUrl} />}
-          <span className="p-0">{`窗口#${tab.windowGroup}`}</span>
+          <span className="p-0 text-xs">{`窗口#${tab.windowGroup}`}</span>
         </CommandItem>
       );
     });
 
     return mappedChildren;
   }, [localStorage]);
-  const filter = (value: string, search: string, keywords?: string[]) => {
+  const filter = useCallback((value: string, search: string, keywords?: string[]) => {
     const extendValue = (value + ' ' + (keywords ? keywords.join(' ') : '')).toLowerCase();
     const searchKey = search.toLowerCase().split(' ');
     if (
@@ -197,7 +199,7 @@ export function PreviewComponent() {
     )
       return 1;
     return 0;
-  };
+  }, []);
 
   return (
     <>
