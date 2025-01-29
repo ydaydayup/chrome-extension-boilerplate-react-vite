@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Avatar,
   AvatarFallback,
@@ -66,7 +66,7 @@ export function PreviewComponent() {
         timestamp: new Date().toISOString(),
       });
       initializeTabs();
-    }, 500); // 60000ms = 1分钟
+    }, 1000); // 60000ms = 1分钟
 
     // 清理函数
     return () => {
@@ -78,41 +78,6 @@ export function PreviewComponent() {
     };
   }, []); // 空依赖数组，只在组件挂载时执行
 
-  // useEffect(() => {
-  //   console.log('PreviewComponent run ready');
-  //   if (!isOpen || !tabs || tabs.length === 0) {
-  //     return;
-  //   }
-  //   console.log('PreviewComponent run');
-  //
-  //   // 只在组件首次挂载时执行一次 createStorage
-  //   const initStorage = async () => {
-  //     try {
-  //       await createStorage();
-  //       // Only try to access first tab if tabs array exists and has items
-  //       const firstTab = tabs[0];
-  //       if (!firstTab || !firstTab.id) {
-  //         return;
-  //       }
-  //
-  //       const tab = await getActiveTab();
-  //       activeTab.current = tab;
-  //       if (activeTab.current && firstTab.id === activeTab.current?.id) {
-  //         return;
-  //       }
-  //       // canvas2htmlRetriever({ id: firstTab.id });
-  //     } catch (error) {
-  //       console.error('[Storage Init]', {
-  //         event: 'storage_init_error',
-  //         error: error.message,
-  //         timestamp: new Date().toISOString()
-  //       });
-  //     }
-  //   };
-  //
-  //   initStorage();
-  // }, [isOpen]); // 只依赖 isOpen，移除 localStorage 依赖
-  //
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       // 是输入状态 或者 是字母 阻止默认行为
@@ -135,91 +100,93 @@ export function PreviewComponent() {
   };
   const [commandListRef, setCommandListRef] = useState<HTMLDivElement | null>(null);
 
-  const PreviewTabsWithDataURL = [];
-  const PreviewTabsWithoutDataURL = [];
-  for (const tab of tabs) {
-    if (localStorage?.[tab.id!]?.dataURL) {
-      PreviewTabsWithDataURL.push(tab);
-    } else {
-      PreviewTabsWithoutDataURL.push(tab);
+  const childrens = useMemo(() => {
+    console.log('[Tab Manager]', {
+      event: 'preview_tabs',
+      timestamp: new Date().toISOString(),
+    });
+    const PreviewTabsWithDataURL = [];
+    const PreviewTabsWithoutDataURL = [];
+    for (const tab of tabs) {
+      if (localStorage?.[tab.id!]?.dataURL) {
+        PreviewTabsWithDataURL.push(tab);
+      } else {
+        PreviewTabsWithoutDataURL.push(tab);
+      }
     }
-  }
-  const previewTabs = [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].filter(t => t.id);
-  // const domains = new Set(previewTabs.map(tab => getDomain(tab.url || '')));
-  // 创建域名到颜色的映射
-  // 计算每个域名出现的次数
-  const domainCounts = tabs.reduce(
-    (acc, tab) => {
+    const previewTabs = [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].filter(t => t.id);
+    // const domains = new Set(previewTabs.map(tab => getDomain(tab.url || '')));
+    // 创建域名到颜色的映射
+    // 计算每个域名出现的次数
+    const domainCounts = tabs.reduce(
+      (acc, tab) => {
+        const domain = getDomain(tab.url || '');
+        acc[domain] = (acc[domain] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    // 获取域名总数
+    const uniqueDomainCount = Object.keys(domainCounts).length;
+    const mappedChildren = previewTabs.map((tab, index, array) => {
+      const favIconUrl = tab.favIconURL || tab.favIconUrl || '';
+      const previewUrl = localStorage?.[tab.id!]?.dataURL || '';
       const domain = getDomain(tab.url || '');
-      acc[domain] = (acc[domain] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
+      const domainFrequency = domainCounts[domain] || 0;
+      const borderStyle = generateBorderStyleForDomain(domain, uniqueDomainCount, domainFrequency);
 
-  // 获取域名总数
-  const uniqueDomainCount = Object.keys(domainCounts).length;
-  const mappedChildren = previewTabs.map((tab, index, array) => {
-    const favIconUrl = tab.favIconURL || tab.favIconUrl || '';
-    const previewUrl = localStorage?.[tab.id!]?.dataURL || '';
-    const domain = getDomain(tab.url || '');
-    const domainFrequency = domainCounts[domain] || 0;
-    const borderStyle = generateBorderStyleForDomain(domain, uniqueDomainCount, domainFrequency);
+      const style: React.CSSProperties = {
+        position: 'relative',
+        borderRadius: '4px',
+      };
+      if (borderStyle.colors.length > 0) {
+        // 生成多层边框的样式
+        const borderStyles = borderStyle.colors.map((color, index) => {
+          const offset = (index + 1) * 3; // 每个边框之间的间距
+          return `${color} 0 0 0 ${offset}px`;
+        });
 
-    // 生成多层边框的样式
-    const borderStyles = borderStyle.colors.map((color, index) => {
-      const offset = (index + 1) * 3; // 每个边框之间的间距
-      return `${color} 0 0 0 ${offset}px`;
+        style.margin = `${borderStyle.count * 3}px`;
+        style.boxShadow = borderStyles.join(', ');
+      }
+      console.log('style', style);
+      return (
+        <CommandItem
+          key={tab.id}
+          data-tab={tab.id}
+          data-title={tab.title}
+          data-url={tab.url}
+          style={style}
+          className={`cursor-pointer grid grid-cols-2 grid-row-2  w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
+          onMouseDown={(e: React.MouseEvent) => {
+            const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);
+            if (e.button === 1 && tabId) {
+              e.preventDefault();
+              removeTab(tabId).then(() => {
+                setTabDialogState({ tabs: tabs.filter(t => t.id !== tabId) });
+              });
+            }
+          }}
+          onSelect={() => {
+            jump2Tab(tab).then(() => {
+              setOpen(false);
+            });
+          }}>
+          <div className={'row-span-1 col-span-2 gap-x-1 items-center grid grid-cols-[auto_1fr]'}>
+            <FavIconAvatar favIconUrl={favIconUrl} className={'row-start-1 w-4 h-4'} />
+            <span className={'row-start-1 text-xs'}>{tab.title || ''}</span>
+            <div className={'hidden row-start-1'}>{tab.id || ''}</div>
+          </div>
+          <div className={'col-start-1 col-span-2 text-xs'}>{tab.url || ''}</div>
+          {previewUrl && <img className={'col-start-1 col-span-2'} alt="Logo" src={previewUrl} />}
+          <span className="p-0">{`窗口#${tab.windowGroup}`}</span>
+        </CommandItem>
+      );
     });
 
-    const style: React.CSSProperties = {
-      position: 'relative',
-      borderRadius: '4px',
-    };
-    if (borderStyle.colors.length > 0) {
-      // 生成多层边框的样式
-      const borderStyles = borderStyle.colors.map((color, index) => {
-        const offset = (index + 1) * 3; // 每个边框之间的间距
-        return `${color} 0 0 0 ${offset}px`;
-      });
-
-      style.margin = `${borderStyle.count * 3}px`;
-      style.boxShadow = borderStyles.join(', ');
-    }
-    console.log('style', style);
-    return (
-      <CommandItem
-        key={tab.id}
-        data-tab={tab.id}
-        data-title={tab.title}
-        data-url={tab.url}
-        style={style}
-        className={`cursor-pointer grid grid-cols-2 grid-row-2  w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
-        onMouseDown={(e: React.MouseEvent) => {
-          const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);
-          if (e.button === 1 && tabId) {
-            e.preventDefault();
-            removeTab(tabId).then(() => {
-              setTabDialogState({ tabs: tabs.filter(t => t.id !== tabId) });
-            });
-          }
-        }}
-        onSelect={() => {
-          jump2Tab(tab).then(() => {
-            setOpen(false);
-          });
-        }}>
-        <div className={'row-span-1 col-span-2 gap-x-1 items-center grid grid-cols-[auto_1fr]'}>
-          <FavIconAvatar favIconUrl={favIconUrl} className={'row-start-1 w-4 h-4'} />
-          <span className={'row-start-1 text-xs'}>{tab.title || ''}</span>
-          <div className={'hidden row-start-1'}>{tab.id || ''}</div>
-        </div>
-        <div className={'col-start-1 col-span-2 text-xs'}>{tab.url || ''}</div>
-        {previewUrl && <img className={'col-start-1 col-span-2'} alt="Logo" src={previewUrl} />}
-        <Badge variant="outline">{`窗口#${tab.windowGroup}`}</Badge>
-      </CommandItem>
-    );
-  });
+    return mappedChildren;
+  }, [localStorage]);
   const filter = (value: string, search: string, keywords?: string[]) => {
     const extendValue = (value + ' ' + (keywords ? keywords.join(' ') : '')).toLowerCase();
     const searchKey = search.toLowerCase().split(' ');
@@ -256,7 +223,7 @@ export function PreviewComponent() {
             ref={setCommandListRef}>
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup className={'group-[.large-panel]:max-w-[svw]'} heading={'tabs'}>
-              {mappedChildren}
+              {childrens}
             </CommandGroup>
           </CommandList>
         </CommandDialog>

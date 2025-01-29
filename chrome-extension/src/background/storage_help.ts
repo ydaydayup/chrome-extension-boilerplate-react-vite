@@ -26,3 +26,12 @@ export async function getOrSetCurrentTab(tabId: TabId, uniqueId: string, replace
 //   const storage = await getStorage();
 //   chrome.tabs.sendMessage(tab.id!, { message: 'getStorage', storage: storage });
 // };
+export async function getStorage() {
+  const syncStorage = await chrome.storage.sync.get();
+  const localStorage = await chrome.storage.local.get();
+  // console.log(storage, 'storage');
+  return { syncStorage, localStorage };
+}
+export async function getOrSetCurrentTabxx(tabId: TabId, uniqueId: string, replace = true) {
+  chrome.storage.sync.set({ [uniqueId]: { tabId: tabId } });
+}

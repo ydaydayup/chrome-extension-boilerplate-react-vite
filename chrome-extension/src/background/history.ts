@@ -31,103 +31,89 @@ function getMostFrequentUrls(frequencyMap: Map<string, number>, topN: number): M
   });
 }
 
-export const mostFrequent = () => {
-  chrome.history.search(
-    {
-      text: '',
-      startTime: 0,
-      maxResults: 100000,
-    },
-    (historyItems: chrome.history.HistoryItem[]) => {
+// 添加防抖计时器
+let historyDebounceTimer: NodeJS.Timeout | null = null;
+
+/**
+ * 获取 Map 中访问次数排名前 n 的数据
+ * @param {Map} urlMap - 输入的 Map 对象，键是 URL，值是访问次数
+ * @param {number} n - 返回排名前 n 的数据
+ * @returns {Map} - 返回一个新的 Map 对象，包含排名前 n 的数据
+ */
+function getTopNEntries(urlMap: Map<string, number>, n: number) {
+  // 将 Map 转换为数组，并按访问次数降序排序
+  const sortedArray = Array.from(urlMap).sort((a, b) => b[1] - a[1]);
+
+  // 截取前 n 个元素
+  const topNArray = sortedArray.slice(0, n);
+
+  // 将结果转换回 Map
+  const topNMap = new Map(topNArray);
+
+  return topNMap;
+}
+// 防抖包装的 mostFrequent 函数
+const debouncedMostFrequent = () => {
+  if (historyDebounceTimer) {
+    clearTimeout(historyDebounceTimer);
+  }
+
+  historyDebounceTimer = setTimeout(async () => {
+    console.log('[History]', {
+      event: 'calculate_frequent_urls',
+      timestamp: new Date().toISOString(),
+    });
+
+    try {
+      const historyItems = await chrome.history.search({
+        text: '',
+        startTime: 0,
+        maxResults: 100000,
+      });
+
       const frequencyMap = getFrequentVisits(historyItems);
       const mostFrequentUrls = getMostFrequentUrls(frequencyMap, 5);
-      console.log({ frequencyMap });
-      console.log(mostFrequentUrls);
-      // 显示或使用这些最常访问的URL
-    },
-  );
-};
-// https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/history/getVisits
 
-// chrome.history.getVisits({url:'https://kimi.moonshot.cn'}, (historyItems) => {
-//     console.log({ historyItems });
-//     xxx = new Set(historyItems);
-//     console.log(xxx);
-//   },
-// )
-// {
-//   "historyItems": [
-//   {
-//     "id": "11973",
-//     "isLocal": true,
-//     "referringVisitId": "0",
-//     "transition": "link",
-//     "visitId": "36031",
-//     "visitTime": 1723726953010.436
-//   },
-//   {
-//     "id": "11973",
-//     "isLocal": true,
-//     "referringVisitId": "0",
-//     "transition": "link",
-//     "visitId": "36058",
-//     "visitTime": 1723728581458.3
-//   },
-//   {
-//     "id": "11973",
-//     "isLocal": true,
-//     "referringVisitId": "0",
-//     "transition": "link",
-//     "visitId": "36066",
-//     "visitTime": 1723728674980.231
-//   },
-//   {
-//     "id": "11973",
-//     "isLocal": true,
-//     "referringVisitId": "0",
-//     "transition": "link",
-//     "visitId": "36076",
-//     "visitTime": 1723728743457.022
-//   },
-//   {
-//     "id": "11973",
-//     "isLocal": true,
-//     "referringVisitId": "0",
-//     "transition": "link",
-//     "visitId": "36077",
-//     "visitTime": 1723728743714.551
-//   },
-//   {
-//     "id": "11973",
-//     "isLocal": true,
-//     "referringVisitId": "0",
-//     "transition": "link",
-//     "visitId": "43580",
-//     "visitTime": 1727784132467.285
-//   },
-//   {
-//     "id": "11973",
-//     "isLocal": true,
-//     "referringVisitId": "0",
-//     "transition": "typed",
-//     "visitId": "47727",
-//     "visitTime": 1728197943700.184
-//   },
-//   {
-//     "id": "11973",
-//     "isLocal": true,
-//     "referringVisitId": "0",
-//     "transition": "link",
-//     "visitId": "47728",
-//     "visitTime": 1728197943877.758
-//   },
-//   {
-//     "id": "11973",
-//     "isLocal": true,
-//     "referringVisitId": "0",
-//     "transition": "link",
-//     "visitId": "47729",
-//     "visitTime": 1728197962527.171
-//   }
-// ]
-// }
+      // for (const [url, count] of getTopNEntries(frequencyMap, 100)) {
+      //   chrome.storage.sync.set({ [url]: count });
+      // }
+      console.log('[History]', {
+        event: 'frequent_urls_calculated',
+        frequencyMap,
+        mostFrequentUrls,
+        timestamp: new Date().toISOString(),
+      });
+
+      // 显示或使用这些最常访问的URL
+    } catch (error) {
+      console.error('[History]', {
+        event: 'history_error',
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }, 1000); // 1秒的防抖延迟
+};
+
+// 监听历史记录变化
+// chrome.history.onVisited.addListener((result) => {
+//   console.log('[History]', {
+//     event: 'history_changed',
+//     url: result.url,
+//     timestamp: new Date().toISOString()
+//   });
+//   debouncedMostFrequent();
+// });
+
+// 监听历史记录删除
+chrome.history.onVisitRemoved.addListener(removed => {
+  console.log('[History]', {
+    event: 'history_removed',
+    details: removed,
+    timestamp: new Date().toISOString(),
+  });
+  debouncedMostFrequent();
+});
+
+// 导出原始函数以供直接调用
+export const mostFrequent = debouncedMostFrequent;

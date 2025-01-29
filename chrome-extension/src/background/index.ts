@@ -4,7 +4,7 @@ import type { OnClickData } from '@types/chrome';
 import { getHtmlTextSummary } from '@src/background/kimi';
 import { mostFrequent } from '@src/background/history';
 import { activeTab, getAllTabs, jump2Tab, removeTab, tabDataPrepare } from '@src/background/tab';
-import { getOrSetCurrentTab } from '@src/background/storage_help';
+import { getOrSetCurrentTab, getStorage } from '@src/background/storage_help';
 
 async function getBookmarkTreeNodes() {
   return new Promise((resolve, reject) => {
@@ -30,13 +30,6 @@ function sendResponseMessage(result: Promise<unknown>, sendResponse) {
       console.error('during searchTest request:', error);
       sendResponse(error);
     });
-}
-
-async function getStorage() {
-  const syncStorage = await chrome.storage.sync.get();
-  const localStorage = await chrome.storage.local.get();
-  // console.log(storage, 'storage');
-  return { syncStorage, localStorage };
 }
 
 async function setDatasetId(datasetId: string) {
@@ -86,7 +79,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
       break;
     case 'initial': {
       // const url = chrome.runtime.getURL( 'content-ui/index.html')
-      // const tabs =
       sendResponseMessage(getAllTabs(), sendResponse);
       // await chrome.tabs.sendMessage(tab?.id as number, { message: 'tabAssistant', tabs, url  });
     }
