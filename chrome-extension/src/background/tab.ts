@@ -1,3 +1,5 @@
+import { TabId } from '@src/background/types';
+
 function faviconURL(u) {
   const url = new URL(chrome.runtime.getURL('/_favicon/'));
   url.searchParams.set('pageUrl', u); // this encodes the URL as well
@@ -20,11 +22,10 @@ export async function getAllTabs(): Promise<NewTab[]> {
 
 export const tabDataPrepare = async () => {
   await cleanStorage();
-  // getAllTabs().then(tabs => {
-  //   cleanStorage(tabs);
-  // });
+  // const tabs = await getAllTabs();
+  // return tabs;
 };
-type TabId = chrome.tabs.Tab['id'];
+
 export const removeTab = async (tabId: TabId) => {
   return chrome.tabs.remove(tabId!);
 };
@@ -34,27 +35,30 @@ export async function activeTab() {
   return tab;
 }
 
-export async function cleanStorage() {
-  // for (const tab of tabs) {
-  //   if (!tab.active) continue;
-  //   chrome.tabs.sendMessage(tab.id!, { message: 'html2canvas', tab });
-  // }
-  getAllTabs().then(async tabs => {
-    const localKeys = Object.keys(await chrome.storage.local.get());
-    // const newTabs = tabs.length > 100 ? tabs.slice(0, tabs.length - 100) : [];
-    // 原来打算只保留100个
-    const newTabs = tabs;
-    for (const tab of newTabs) {
-      const tabId = tab?.id?.toString();
-      if (!tabId || localKeys.includes(tabId)) {
-        continue;
-      }
-      chrome.storage.local.remove(tabId!);
-      console.log('remove', { tabId });
-    }
+export const cleanStorage = async () => {
+  const tabs = await getAllTabs(); // Get tabs first
+  const localKeys = Object.keys(await chrome.storage.local.get());
+  const openTabIds = tabs.map(tab => tab.id?.toString());
+  const tabsToRemove = localKeys.filter(tabId => {
+    // const tabId = tab?.id?.toString();
+    return !openTabIds.includes(tabId);
+    // return tabId && !localKeys.includes(tabId);
   });
-  return tabs;
-}
+  // Filter out tabs that need to be removed
+  // const tabsToRemove = tabs.filter(tab => {
+  //   const tabId = tab?.id?.toString();
+  //   return tabId && !localKeys.includes(tabId);
+  // });
+
+  // Remove tabs from storage
+  console.log({ tabsToRemove });
+  for (const tabId of tabsToRemove) {
+    // if (tab.id) {
+    await chrome.storage.local.remove(tabId.toString());
+    console.log('remove', { tabId: tabId });
+  }
+  // }
+};
 
 export async function jump2Tab(tab: chrome.tabs.Tab) {
   chrome.tabs.update(tab.id, { active: true });
@@ -64,56 +68,77 @@ export async function jump2Tab(tab: chrome.tabs.Tab) {
 async function canvas2htmlSaver(tabId: TabId, dataURL) {
   chrome.storage.local.set({ [tabId as number]: { dataURL: dataURL } });
 }
-
+const MIN_CAPTURE_INTERVAL = 500;
 function capturePage(activeInfo: chrome.tabs.TabActiveInfo) {
   console.log('Capture Visible Tab; ', activeInfo);
-  setTimeout(function () {
-    chrome.tabs.captureVisibleTab({ format: 'png' }, function (dataUrl) {
-      console.log({ dataUrl });
+  setTimeout(async function () {
+    try {
+      const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'png' });
       if (!dataUrl) {
         return;
       }
-      if (chrome.runtime.lastError) {
-        console.log(chrome.runtime.lastError);
-        return;
-      }
-      canvas2htmlSaver(activeInfo.tabId, dataUrl);
+      await canvas2htmlSaver(activeInfo.tabId, dataUrl);
+      await cleanStorage(); // Call cleanStorage after successful capture
+    } catch (error) {
+      console.error('Error capturing page:', error);
+    }
+  }, MIN_CAPTURE_INTERVAL);
+}
+
+// 添加一个防抖计时器映射
+const debounceTimers: { [key: number]: NodeJS.Timeout } = {};
+
+// 创建一个防抖包装函数
+function debouncedCapturePage(tabInfo: chrome.tabs.TabActiveInfo | chrome.tabs.Tab) {
+  const tabId = 'tabId' in tabInfo ? tabInfo.tabId : tabInfo.id;
+
+  if (!tabId) {
+    console.log('[Capture Debounce]', {
+      event: 'skip_capture',
+      reason: 'no_tab_id',
+      timestamp: new Date().toISOString(),
     });
-  }, 100);
-  cleanStorage();
-  // activeTab().then(tab => {
-  //   // https://www.cjavapy.com/article/1978/
-  //   setTimeout(function() {
-  //     chrome.tabs.captureVisibleTab({ format: 'png' }, function(dataUrl) {
-  //       console.log({ dataUrl });
-  //       if (!dataUrl) {
-  //         return;
-  //       }
-  //       if (chrome.runtime.lastError) {
-  //         console.log(chrome.runtime.lastError);
-  //         return;
-  //       }
-  //       canvas2htmlSaver(activeInfo.tabId, dataUrl);
-  //     });
-  //
-  //   }, 100);
-  // });
+    return;
+  }
+
+  // 清除之前的定时器
+  if (debounceTimers[tabId]) {
+    clearTimeout(debounceTimers[tabId]);
+  }
+
+  // 设置新的定时器，1秒后执行
+  debounceTimers[tabId] = setTimeout(() => {
+    capturePage(tabInfo);
+    delete debounceTimers[tabId];
+  }, 1000);
 }
 
 chrome.tabs.onActivated.addListener(function (activeInfo) {
-  console.log({ activeInfo });
-  capturePage(activeInfo);
+  console.log('[Tab Event]', {
+    event: 'activated',
+    activeInfo,
+    timestamp: new Date().toISOString(),
+  });
+  debouncedCapturePage(activeInfo);
 });
 
 chrome.tabs.onZoomChange.addListener(function (ZoomChangeInfo) {
-  console.log({ ZoomChangeInfo });
-  capturePage(ZoomChangeInfo);
+  console.log('[Tab Event]', {
+    event: 'zoom_change',
+    ZoomChangeInfo,
+    timestamp: new Date().toISOString(),
+  });
+  debouncedCapturePage(ZoomChangeInfo);
 });
 
 chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
-  console.log({ changeInfo });
+  console.log('[Tab Event]', {
+    event: 'updated',
+    changeInfo,
+    timestamp: new Date().toISOString(),
+  });
   if (changeInfo.status !== 'complete') {
     return;
   }
-  capturePage(tab);
+  debouncedCapturePage(tab);
 });

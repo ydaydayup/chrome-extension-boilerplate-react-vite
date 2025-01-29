@@ -4,6 +4,7 @@ import type { OnClickData } from '@types/chrome';
 import { getHtmlTextSummary } from '@src/background/kimi';
 import { mostFrequent } from '@src/background/history';
 import { activeTab, getAllTabs, jump2Tab, removeTab, tabDataPrepare } from '@src/background/tab';
+import { getOrSetCurrentTab } from '@src/background/storage_help';
 
 async function getBookmarkTreeNodes() {
   return new Promise((resolve, reject) => {
@@ -167,11 +168,46 @@ chrome.runtime.onInstalled.addListener(details => {
   tabDataPrepare();
 });
 
-chrome.commands.onCommand.addListener(async (command: string, tab?: chrome.tabs.Tab) => {
+chrome.commands.onCommand.addListener(async (command: string) => {
   if (command === 'tabAssistant') {
-    await chrome.tabs.sendMessage(tab?.id as number, { message: 'tabAssistant', tabs: await getAllTabs() });
+    const url = chrome.runtime.getURL('content-ui/index.html');
+    // Create a new window for the tab switcher
+    const tabs = await getAllTabs();
+    const tabId = await getOrSetCurrentTab(undefined, '新窗口', false);
+    let finalTabId;
+    console.log('新窗口已创建，窗口ID为：' + tabId, tabs.map(tab => tab.id).includes(tabId));
+    if (tabId && tabs.map(tab => tab.id).includes(tabId)) {
+      finalTabId = tabId;
+    } else {
+      chrome.windows.create(
+        {
+          url,
+          type: 'normal', // 窗口类型，可以是"normal"、"popup"等
+          width: 800, // 窗口宽度
+          height: 600, // 窗口高度
+          left: 100, // 窗口距离屏幕左侧的距离
+          top: 100, // 窗口距离屏幕顶部的距离
+          // state : "fullscreen", // 是否全屏
+        },
+        async function (window) {
+          const tabId = window!.tabs![0].id! as number;
+          finalTabId = await getOrSetCurrentTab(tabId, '新窗口');
+          console.log({ finalTabId });
+        },
+      );
+    }
+    console.log('新窗口已创建，窗口ID为：' + tabId);
+    console.log({ finalTabId });
+    chrome.tabs.sendMessage(finalTabId, { message: 'tabAssistant', tabs });
   }
 });
+// chrome.commands.onCommand.addListener(async (command: string,  tab?: chrome.tabs.Tab) => {
+//   if (command === 'tabAssistant') {
+//     const url = chrome.runtime.getURL( 'content-ui/index.html')
+//     const tabs = await getAllTabs();
+//     await chrome.tabs.sendMessage(tab?.id as number, { message: 'tabAssistant', tabs, url  });
+//   }
+// });
 
 chrome.contextMenus.onClicked.addListener(async function (info: OnClickData, tab: chrome.tabs.Tab) {
   const storage = await getStorage();
