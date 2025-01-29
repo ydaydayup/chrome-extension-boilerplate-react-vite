@@ -22,8 +22,6 @@ export async function getAllTabs(): Promise<NewTab[]> {
 
 export const tabDataPrepare = async () => {
   await cleanStorage();
-  // const tabs = await getAllTabs();
-  // return tabs;
 };
 
 export const removeTab = async (tabId: TabId) => {
@@ -40,20 +38,11 @@ export const cleanStorage = async () => {
   const localKeys = Object.keys(await chrome.storage.local.get());
   const openTabIds = tabs.map(tab => tab.id?.toString());
   const tabsToRemove = localKeys.filter(tabId => {
-    // const tabId = tab?.id?.toString();
     return !openTabIds.includes(tabId);
-    // return tabId && !localKeys.includes(tabId);
   });
-  // Filter out tabs that need to be removed
-  // const tabsToRemove = tabs.filter(tab => {
-  //   const tabId = tab?.id?.toString();
-  //   return tabId && !localKeys.includes(tabId);
-  // });
 
-  // Remove tabs from storage
   console.log({ tabsToRemove });
   for (const tabId of tabsToRemove) {
-    // if (tab.id) {
     await chrome.storage.local.remove(tabId.toString());
     console.log('remove', { tabId: tabId });
   }
@@ -66,15 +55,39 @@ export async function jump2Tab(tab: chrome.tabs.Tab) {
 }
 
 async function canvas2htmlSaver(tabId: TabId, dataURL) {
+  console.log('[Tab Saver]', { tabId, dataURL });
   chrome.storage.local.set({ [tabId as number]: { dataURL: dataURL } });
 }
+
 const MIN_CAPTURE_INTERVAL = 500;
-function capturePage(activeInfo: chrome.tabs.TabActiveInfo) {
+
+/**
+ * Capture the visible tab and save it to local storage. 由于是异步的，所以需要等待一段时间再执行。所以截图可能不是正确的页面
+ * @param activeInfo The activeInfo object returned by the chrome.tabs.onActivated event.
+ * @returns A promise that resolves when the capture is complete.
+ */
+async function capturePage(activeInfo: chrome.tabs.TabActiveInfo) {
   console.log('Capture Visible Tab; ', activeInfo);
+  // if (activeInfo.windowId === undefined) {
+  //   return;
+  // }
+  // 如果当前activeInfo的tabid和当前活跃的不一致，就直接返回
+  const isActiveTab = async () => {
+    return activeInfo.tabId === (await activeTab())?.id;
+    // if (activeInfo.tabId !== (await activeTab())?.id) {
+    //   return;
+    // }
+  };
   setTimeout(async function () {
+    if (!(await isActiveTab())) {
+      return;
+    }
     try {
       const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'png' });
       if (!dataUrl) {
+        return;
+      }
+      if (!(await isActiveTab())) {
         return;
       }
       await canvas2htmlSaver(activeInfo.tabId, dataUrl);
@@ -110,16 +123,86 @@ function debouncedCapturePage(tabInfo: chrome.tabs.TabActiveInfo | chrome.tabs.T
   debounceTimers[tabId] = setTimeout(() => {
     capturePage(tabInfo);
     delete debounceTimers[tabId];
-  }, 1000);
+  }, 500);
 }
 
+// 添加一个跟踪当前活动标签页的变量
+let currentActiveTabId: number | null = null;
+let captureInterval: NodeJS.Timeout | null = null;
+
+// 启动定期捕获
+function startPeriodicCapture(tabId: number) {
+  console.log('[Tab Event]', { tabId });
+  // 如果已经在捕获这个标签页，不需要重新启动
+  if (currentActiveTabId === tabId && captureInterval) {
+    return;
+  }
+
+  // 清除之前的定时器
+  if (captureInterval) {
+    clearInterval(captureInterval);
+  }
+
+  // 更新当前活动标签页
+  currentActiveTabId = tabId;
+
+  // 设置新的定时器
+  captureInterval = setInterval(() => {
+    console.log('[Periodic Capture]', {
+      event: 'auto_capture',
+      tabId: currentActiveTabId,
+      timestamp: new Date().toISOString(),
+    });
+
+    if (currentActiveTabId) {
+      debouncedCapturePage({ tabId: currentActiveTabId });
+    }
+  }, 1000); // 每秒执行一次
+}
+
+// 停止定期捕获
+function stopPeriodicCapture() {
+  if (captureInterval) {
+    clearInterval(captureInterval);
+    captureInterval = null;
+  }
+  currentActiveTabId = null;
+}
+
+// 修改 onActivated 监听器
 chrome.tabs.onActivated.addListener(function (activeInfo) {
   console.log('[Tab Event]', {
     event: 'activated',
     activeInfo,
     timestamp: new Date().toISOString(),
   });
+  console.log('[Tab Event]', { activeInfo });
+  // 立即执行一次捕获
   debouncedCapturePage(activeInfo);
+
+  // 启动定期捕获
+  startPeriodicCapture(activeInfo.tabId);
+});
+
+// 当标签页关闭时停止捕获
+chrome.tabs.onRemoved.addListener(tabId => {
+  if (currentActiveTabId === tabId) {
+    stopPeriodicCapture();
+  }
+});
+
+// 当窗口失去焦点时停止捕获
+chrome.windows.onFocusChanged.addListener(windowId => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) {
+    stopPeriodicCapture();
+  } else {
+    // 当窗口重新获得焦点时，获取当前活动标签页并重新开始捕获
+    chrome.tabs.query({ active: true, windowId }, tabs => {
+      if (tabs[0]?.id) {
+        startPeriodicCapture(tabs[0].id);
+      }
+    });
+  }
 });
 
 chrome.tabs.onZoomChange.addListener(function (ZoomChangeInfo) {

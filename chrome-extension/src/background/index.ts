@@ -147,12 +147,11 @@ const injectScript = () => {
     });
   });
 };
-// chrome.action.onClicked.addListener((tab) => {
+
+// chrome.management.onEnabled.addListener(function (extension) {
+//   injectScript();
+//   console.log('Extension enabled:', extension.id);
 // });
-chrome.management.onEnabled.addListener(function (extension) {
-  injectScript();
-  console.log('Extension enabled:', extension.id);
-});
 
 chrome.runtime.onInstalled.addListener(details => {
   chrome.contextMenus.create({
@@ -168,9 +167,9 @@ chrome.runtime.onInstalled.addListener(details => {
   if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
     checkCommandShortcuts();
   }
-  injectScript();
+  // injectScript();
   mostFrequent();
-  tabDataPrepare();
+  // tabDataPrepare();
 });
 
 chrome.commands.onCommand.addListener(async (command: string) => {
@@ -179,7 +178,6 @@ chrome.commands.onCommand.addListener(async (command: string) => {
     // Create a new window for the tab switcher
     const tabs = await getAllTabs();
     const tabId = await getOrSetCurrentTab(undefined, '新窗口', false);
-    let finalTabId;
     console.log('新窗口已创建，窗口ID为：' + tabId, tabs.map(tab => tab.id).includes(tabId));
     await createOptimizedWindow(url);
   }
@@ -197,6 +195,35 @@ chrome.contextMenus.onClicked.addListener(async function (info: OnClickData, tab
 
 // 获取主显示器信息并创建窗口
 async function createOptimizedWindow(url: string) {
+  // 首先检查是否已存在包含该 URL 的窗口
+  const existingWindows = await chrome.windows.getAll({ populate: true });
+  for (const window of existingWindows) {
+    if (window.tabs) {
+      const matchingTab = window.tabs.find(tab => tab.url === url);
+      if (matchingTab) {
+        // 如果找到匹配的标签页，激活对应的窗口和标签页
+        console.log('[Window Manager]', {
+          event: 'activate_existing_window',
+          windowId: window.id,
+          tabId: matchingTab.id,
+          timestamp: new Date().toISOString(),
+        });
+
+        await chrome.windows.update(window.id, {
+          focused: true,
+          state: 'normal', // 确保窗口不是最小化状态
+        });
+
+        if (matchingTab.id) {
+          await chrome.tabs.update(matchingTab.id, { active: true });
+        }
+
+        return;
+      }
+    }
+  }
+
+  // 如果没有找到现有窗口，则创建新窗口
   // 获取显示器信息
   const displayInfo = await chrome.system.display.getInfo();
   const primaryDisplay = displayInfo[0]; // 使用主显示器
@@ -209,10 +236,17 @@ async function createOptimizedWindow(url: string) {
   const left = Math.round(primaryDisplay.workArea.left + (primaryDisplay.workArea.width - width) / 2);
   const top = Math.round(primaryDisplay.workArea.top + (primaryDisplay.workArea.height - height) / 2);
 
-  // 创建窗口
+  // 创建新窗口
+  console.log('[Window Manager]', {
+    event: 'create_new_window',
+    url,
+    dimensions: { width, height, left, top },
+    timestamp: new Date().toISOString(),
+  });
+
   await chrome.windows.create({
     url,
-    type: 'popup',
+    type: 'panel',
     width,
     height,
     left,

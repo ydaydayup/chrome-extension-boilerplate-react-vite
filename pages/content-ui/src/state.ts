@@ -79,6 +79,7 @@ export async function getActiveTab(): Promise<chrome.tabs.Tab> {
   setCommonDialogState({ activeTab });
   return activeTab;
 }
+
 export const initializeTabs = async () => {
   const tabs = (await sendMessage({ greeting: 'getAllTabs' })) as NewTab[];
   // const tabs = request.tabs as NewTab[];
@@ -92,6 +93,7 @@ export const initializeTabs = async () => {
     tab['windowGroup'] = windowId.get(tab.windowId);
   }
   setTabDialogState({ tabs: tabs, isOpen: true });
+  await createStorage();
 };
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   console.log({ request });
@@ -104,6 +106,9 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     //   break;
     case 'getStorage':
       useStorageState.setState({ ...request.storage });
+      break;
+    case 'initializeTabs':
+      initializeTabs();
       break;
     case 'tabAssistant': {
       const tabs = request.tabs as NewTab[];

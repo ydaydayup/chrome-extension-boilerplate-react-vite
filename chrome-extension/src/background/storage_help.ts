@@ -22,3 +22,7 @@ export async function getOrSetCurrentTab(tabId: TabId, uniqueId: string, replace
   chrome.storage.local.set({ [uniqueId]: { tabId: tabId } });
   return tabId;
 }
+// const sendStorageMessage=async (tab: chrome.tabs.Tab) => {
+//   const storage = await getStorage();
+//   chrome.tabs.sendMessage(tab.id!, { message: 'getStorage', storage: storage });
+// };

@@ -56,30 +56,63 @@ export function PreviewComponent() {
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
   const { localStorage } = useStorageState(state => state);
   useEffect(() => {
+    // 立即执行一次
     initializeTabs();
-  }, []);
 
-  useEffect(() => {
-    console.log('PreviewComponent run ready');
-    if (!isOpen || !tabs || tabs.length === 0) {
-      return;
-    }
-    console.log('PreviewComponent run');
-    createStorage();
-    // Only try to access first tab if tabs array exists and has items
-    const firstTab = tabs[0];
-    if (!firstTab || !firstTab.id) {
-      return;
-    }
+    // 设置定时器，每分钟执行一次
+    const timer = setInterval(() => {
+      console.log('[Tab Manager]', {
+        event: 'auto_refresh_tabs',
+        timestamp: new Date().toISOString(),
+      });
+      initializeTabs();
+    }, 500); // 60000ms = 1分钟
 
-    getActiveTab().then(tab => {
-      activeTab.current = tab;
-      if (activeTab.current && firstTab.id === activeTab.current?.id) {
-        return;
-      }
-      // canvas2htmlRetriever({ id: firstTab.id });
-    });
-  }, [isOpen, tabs]);
+    // 清理函数
+    return () => {
+      clearInterval(timer);
+      console.log('[Tab Manager]', {
+        event: 'clear_refresh_timer',
+        timestamp: new Date().toISOString(),
+      });
+    };
+  }, []); // 空依赖数组，只在组件挂载时执行
+
+  // useEffect(() => {
+  //   console.log('PreviewComponent run ready');
+  //   if (!isOpen || !tabs || tabs.length === 0) {
+  //     return;
+  //   }
+  //   console.log('PreviewComponent run');
+  //
+  //   // 只在组件首次挂载时执行一次 createStorage
+  //   const initStorage = async () => {
+  //     try {
+  //       await createStorage();
+  //       // Only try to access first tab if tabs array exists and has items
+  //       const firstTab = tabs[0];
+  //       if (!firstTab || !firstTab.id) {
+  //         return;
+  //       }
+  //
+  //       const tab = await getActiveTab();
+  //       activeTab.current = tab;
+  //       if (activeTab.current && firstTab.id === activeTab.current?.id) {
+  //         return;
+  //       }
+  //       // canvas2htmlRetriever({ id: firstTab.id });
+  //     } catch (error) {
+  //       console.error('[Storage Init]', {
+  //         event: 'storage_init_error',
+  //         error: error.message,
+  //         timestamp: new Date().toISOString()
+  //       });
+  //     }
+  //   };
+  //
+  //   initStorage();
+  // }, [isOpen]); // 只依赖 isOpen，移除 localStorage 依赖
+  //
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       // 是输入状态 或者 是字母 阻止默认行为
