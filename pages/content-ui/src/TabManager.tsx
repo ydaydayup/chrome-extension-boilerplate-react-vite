@@ -25,6 +25,7 @@ import {
   useTabDialogState,
 } from '@src/state';
 import { canvas2htmlRetriever } from '@src/screenshot';
+import { generateBorderStyleForDomain, getDomain } from '../utils/tabs';
 
 // const { CalendarIcon, RocketIcon } = lucide;
 
@@ -101,41 +102,6 @@ export function PreviewComponent() {
   };
   const [commandListRef, setCommandListRef] = useState<HTMLDivElement | null>(null);
 
-  // useEffect(() => {
-  //   const observer = new MutationObserver(mutations => {
-  //     mutations.forEach(mutation => {
-  //       console.log(mutation);
-  //       if (mutation.type === 'attributes' && mutation.attributeName === 'aria-selected') {
-  //         const target = mutation.target as HTMLElement;
-  //         if (target?.getAttribute('aria-selected') !== 'true') {
-  //           return;
-  //         }
-  //         const tabId = target.getAttribute('data-tab');
-  //         // const tabTitle = target.getAttribute('data-title') || '';
-  //         // const tabUrl = target.getAttribute('data-url') || '';
-  //         if (tabId === null) {
-  //           return;
-  //         }
-  //         if (activeTab.current && tabId === (activeTab.current?.id as number).toString()) {
-  //           setTabDialogState({ preview: '', previewTitle: '', previewUrl: '' });
-  //           return;
-  //         }
-  //         console.log("111")
-  //         canvas2htmlRetriever({ id: parseInt(tabId as string, 10) });
-  //       }
-  //     });
-  //   });
-
-  //   if (commandListRef) {
-  //     observer.observe(commandListRef, {
-  //       attributes: true,
-  //       subtree: true,
-  //       attributeFilter: ['aria-selected'],
-  //     });
-  //   }
-  //
-  //   return () => observer.disconnect();
-  // }, [commandListRef]);
   const PreviewTabsWithDataURL = [];
   const PreviewTabsWithoutDataURL = [];
   for (const tab of tabs) {
@@ -146,15 +112,55 @@ export function PreviewComponent() {
     }
   }
   const previewTabs = [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].filter(t => t.id);
+  // const domains = new Set(previewTabs.map(tab => getDomain(tab.url || '')));
+  // 创建域名到颜色的映射
+  // 计算每个域名出现的次数
+  const domainCounts = tabs.reduce(
+    (acc, tab) => {
+      const domain = getDomain(tab.url || '');
+      acc[domain] = (acc[domain] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
+  // 获取域名总数
+  const uniqueDomainCount = Object.keys(domainCounts).length;
   const mappedChildren = previewTabs.map((tab, index, array) => {
     const favIconUrl = tab.favIconURL || tab.favIconUrl || '';
     const previewUrl = localStorage?.[tab.id!]?.dataURL || '';
+    const domain = getDomain(tab.url || '');
+    const domainFrequency = domainCounts[domain] || 0;
+    const borderStyle = generateBorderStyleForDomain(domain, uniqueDomainCount, domainFrequency);
+
+    // 生成多层边框的样式
+    const borderStyles = borderStyle.colors.map((color, index) => {
+      const offset = (index + 1) * 3; // 每个边框之间的间距
+      return `${color} 0 0 0 ${offset}px`;
+    });
+
+    const style: React.CSSProperties = {
+      position: 'relative',
+      borderRadius: '4px',
+    };
+    if (borderStyle.colors.length > 0) {
+      // 生成多层边框的样式
+      const borderStyles = borderStyle.colors.map((color, index) => {
+        const offset = (index + 1) * 3; // 每个边框之间的间距
+        return `${color} 0 0 0 ${offset}px`;
+      });
+
+      style.margin = `${borderStyle.count * 3}px`;
+      style.boxShadow = borderStyles.join(', ');
+    }
+    console.log('style', style);
     return (
       <CommandItem
         key={tab.id}
         data-tab={tab.id}
         data-title={tab.title}
         data-url={tab.url}
+        style={style}
         className={`cursor-pointer grid grid-cols-2 grid-row-2  w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
         onMouseDown={(e: React.MouseEvent) => {
           const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);
@@ -172,10 +178,10 @@ export function PreviewComponent() {
         }}>
         <div className={'row-span-1 col-span-2 gap-x-1 items-center grid grid-cols-[auto_1fr]'}>
           <FavIconAvatar favIconUrl={favIconUrl} className={'row-start-1 w-4 h-4'} />
-          <span className={'row-start-1'}>{tab.title || ''}</span>
+          <span className={'row-start-1 text-xs'}>{tab.title || ''}</span>
           <div className={'hidden row-start-1'}>{tab.id || ''}</div>
         </div>
-        <div className={'col-start-1 col-span-2'}>{tab.url || ''}</div>
+        <div className={'col-start-1 col-span-2 text-xs'}>{tab.url || ''}</div>
         {previewUrl && <img className={'col-start-1 col-span-2'} alt="Logo" src={previewUrl} />}
         <Badge variant="outline">{`窗口#${tab.windowGroup}`}</Badge>
       </CommandItem>
@@ -454,25 +460,3 @@ export function TabCommand() {
 }
 
 // 添加一个获取域名的工具函数
-const getDomain = (url: string) => {
-  try {
-    const urlObj = new URL(url);
-    return urlObj.hostname;
-  } catch {
-    return '';
-  }
-};
-
-// 生成固定的颜色映射
-const generateColorForDomain = (domain: string) => {
-  const colors = ['#FFB6C1', '#98FB98', '#87CEFA', '#DDA0DD', '#F0E68C', '#E6E6FA', '#F08080', '#20B2AA'];
-
-  let hash = 0;
-  for (let i = 0; i < domain.length; i++) {
-    hash = domain.charCodeAt(i) + ((hash << 5) - hash);
-  }
-
-  return colors[Math.abs(hash) % colors.length];
-};
-
-// 在组件中

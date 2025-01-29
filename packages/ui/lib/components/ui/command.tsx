@@ -38,12 +38,12 @@ const CommandDialog = ({ children, contentProps, commandProps, ...props }: Comma
           className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
           {children}
         </Command>
-        <DialogFooter className={'flex flex-col-reverse  items-end'}>
-          <Button variant="outline" cmdk-raycast-open-trigger="">
+        <DialogFooter className={'flex text-xs flex-col-reverse  items-end'}>
+          <Button variant="outline" className="text-xs" cmdk-raycast-open-trigger="">
             退出<kbd>Esc</kbd>
           </Button>
           <hr />
-          <Button variant="outline" cmdk-raycast-open-trigger="">
+          <Button variant="outline" className="text-xs" cmdk-raycast-open-trigger="">
             关闭标签 <kbd>鼠标中键</kbd>
           </Button>
           <hr />
