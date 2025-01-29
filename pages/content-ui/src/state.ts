@@ -19,6 +19,7 @@ type TabManagerType = {
   previewId: number | null;
   previewTitle: string;
   previewUrl: string;
+  // url: string,
 };
 
 type CommonDialogStateType = {
@@ -78,7 +79,20 @@ export async function getActiveTab(): Promise<chrome.tabs.Tab> {
   setCommonDialogState({ activeTab });
   return activeTab;
 }
-
+export const initializeTabs = async () => {
+  const tabs = (await sendMessage({ greeting: 'getAllTabs' })) as NewTab[];
+  // const tabs = request.tabs as NewTab[];
+  const windowId = new Map<number, number>();
+  let windowNumber = 0;
+  for (const tab of tabs) {
+    if (!windowId.has(tab.windowId)) {
+      windowNumber++;
+      windowId.set(tab.windowId, windowNumber);
+    }
+    tab['windowGroup'] = windowId.get(tab.windowId);
+  }
+  setTabDialogState({ tabs: tabs, isOpen: true });
+};
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   console.log({ request });
   switch (request.message) {

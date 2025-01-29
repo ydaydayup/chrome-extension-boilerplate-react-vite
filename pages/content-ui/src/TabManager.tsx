@@ -17,6 +17,7 @@ import {
 import {
   createStorage,
   getActiveTab,
+  initializeTabs,
   jump2Tab,
   removeTab,
   setTabDialogState,
@@ -54,20 +55,30 @@ export function PreviewComponent() {
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
   const { localStorage } = useStorageState(state => state);
   useEffect(() => {
-    if (!isOpen) {
+    initializeTabs();
+  }, []);
+
+  useEffect(() => {
+    console.log('PreviewComponent run ready');
+    if (!isOpen || !tabs || tabs.length === 0) {
       return;
     }
+    console.log('PreviewComponent run');
     createStorage();
-    // 打开面板会默认选中第一个 获取image
-    const tabId = tabs[0].id;
+    // Only try to access first tab if tabs array exists and has items
+    const firstTab = tabs[0];
+    if (!firstTab || !firstTab.id) {
+      return;
+    }
+
     getActiveTab().then(tab => {
       activeTab.current = tab;
-      if (activeTab.current && tabId! === activeTab.current?.id) {
+      if (activeTab.current && firstTab.id === activeTab.current?.id) {
         return;
       }
-      canvas2htmlRetriever({ id: tabs[0].id as number });
+      // canvas2htmlRetriever({ id: firstTab.id });
     });
-  }, [isOpen]);
+  }, [isOpen, tabs]);
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       // 是输入状态 或者 是字母 阻止默认行为
@@ -84,6 +95,8 @@ export function PreviewComponent() {
   }, [isOpen, isInputFocused]);
 
   const setOpen = (isOpen: boolean) => {
+    // 永远设置为true
+    isOpen = true;
     setTabDialogState({ isOpen });
   };
   const [commandListRef, setCommandListRef] = useState<HTMLDivElement | null>(null);
@@ -132,17 +145,16 @@ export function PreviewComponent() {
       PreviewTabsWithoutDataURL.push(tab);
     }
   }
-  const mappedChildren = [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].map((tab, index, array) => {
+  const previewTabs = [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].filter(t => t.id);
+  const mappedChildren = previewTabs.map((tab, index, array) => {
     const favIconUrl = tab.favIconURL || tab.favIconUrl || '';
     const previewUrl = localStorage?.[tab.id!]?.dataURL || '';
-
     return (
       <CommandItem
         key={tab.id}
         data-tab={tab.id}
         data-title={tab.title}
         data-url={tab.url}
-        update
         className={`cursor-pointer grid grid-cols-2 grid-row-2  w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
         onMouseDown={(e: React.MouseEvent) => {
           const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);
@@ -440,3 +452,27 @@ export function TabCommand() {
     </>
   );
 }
+
+// 添加一个获取域名的工具函数
+const getDomain = (url: string) => {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname;
+  } catch {
+    return '';
+  }
+};
+
+// 生成固定的颜色映射
+const generateColorForDomain = (domain: string) => {
+  const colors = ['#FFB6C1', '#98FB98', '#87CEFA', '#DDA0DD', '#F0E68C', '#E6E6FA', '#F08080', '#20B2AA'];
+
+  let hash = 0;
+  for (let i = 0; i < domain.length; i++) {
+    hash = domain.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  return colors[Math.abs(hash) % colors.length];
+};
+
+// 在组件中

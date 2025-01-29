@@ -11,15 +11,15 @@ export default withPageConfig({
       '@src': srcDir,
     },
   },
-  plugins: [isDev && makeEntryPointPlugin()],
+  // plugins: [isDev && makeEntryPointPlugin()],
   publicDir: resolve(rootDir, 'public'),
   build: {
-    lib: {
-      entry: resolve(srcDir, 'index.tsx'),
-      name: 'contentUI',
-      formats: ['iife'],
-      fileName: 'index',
-    },
+    // lib: {
+    //   entry: resolve(srcDir, 'index.tsx'),
+    //   name: 'contentUI',
+    //   formats: ['iife'],
+    //   fileName: 'index',
+    // },
     outDir: resolve(rootDir, '..', '..', 'dist', 'content-ui'),
   },
 });

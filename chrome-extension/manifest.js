@@ -41,6 +41,7 @@ const manifest = deepmerge(
       'history',
       'favicon',
       'management',
+      'system.display',
     ],
     // options_page: 'options/index.html',
     background: {
@@ -73,7 +74,7 @@ const manifest = deepmerge(
       // },
       {
         matches: ['http://*/*', 'https://*/*', '<all_urls>'],
-        js: ['content-ui/index.iife.js'],
+        js: ['content-ui/index.iife.js', 'content-ui/index.html'],
         css: ['content-ui/style.css'], // public folder
       },
       // {

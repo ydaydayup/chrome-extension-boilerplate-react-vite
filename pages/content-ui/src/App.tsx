@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookmarkCollection } from '@src/BookmarkCollection';
+// import { BookmarkCollection } from '@src/BookmarkCollection';
 import { TabCommand } from '@src/TabManager';
 
 export default function App() {

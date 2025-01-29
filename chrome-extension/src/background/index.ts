@@ -84,7 +84,12 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     case 'getAllTabs':
       sendResponseMessage(getAllTabs(), sendResponse);
       break;
-
+    case 'initial': {
+      // const url = chrome.runtime.getURL( 'content-ui/index.html')
+      // const tabs =
+      sendResponseMessage(getAllTabs(), sendResponse);
+      // await chrome.tabs.sendMessage(tab?.id as number, { message: 'tabAssistant', tabs, url  });
+    }
     case 'canvas2htmlRetriever':
       sendResponseMessage(canvas2htmlRetriever(request.tab), sendResponse);
       break;
@@ -176,38 +181,9 @@ chrome.commands.onCommand.addListener(async (command: string) => {
     const tabId = await getOrSetCurrentTab(undefined, '新窗口', false);
     let finalTabId;
     console.log('新窗口已创建，窗口ID为：' + tabId, tabs.map(tab => tab.id).includes(tabId));
-    if (tabId && tabs.map(tab => tab.id).includes(tabId)) {
-      finalTabId = tabId;
-    } else {
-      chrome.windows.create(
-        {
-          url,
-          type: 'normal', // 窗口类型，可以是"normal"、"popup"等
-          width: 800, // 窗口宽度
-          height: 600, // 窗口高度
-          left: 100, // 窗口距离屏幕左侧的距离
-          top: 100, // 窗口距离屏幕顶部的距离
-          // state : "fullscreen", // 是否全屏
-        },
-        async function (window) {
-          const tabId = window!.tabs![0].id! as number;
-          finalTabId = await getOrSetCurrentTab(tabId, '新窗口');
-          console.log({ finalTabId });
-        },
-      );
-    }
-    console.log('新窗口已创建，窗口ID为：' + tabId);
-    console.log({ finalTabId });
-    chrome.tabs.sendMessage(finalTabId, { message: 'tabAssistant', tabs });
+    await createOptimizedWindow(url);
   }
 });
-// chrome.commands.onCommand.addListener(async (command: string,  tab?: chrome.tabs.Tab) => {
-//   if (command === 'tabAssistant') {
-//     const url = chrome.runtime.getURL( 'content-ui/index.html')
-//     const tabs = await getAllTabs();
-//     await chrome.tabs.sendMessage(tab?.id as number, { message: 'tabAssistant', tabs, url  });
-//   }
-// });
 
 chrome.contextMenus.onClicked.addListener(async function (info: OnClickData, tab: chrome.tabs.Tab) {
   const storage = await getStorage();
@@ -218,3 +194,28 @@ chrome.contextMenus.onClicked.addListener(async function (info: OnClickData, tab
     chrome.tabs.sendMessage(tab.id!, { message: TabsManagerId });
   }
 });
+
+// 获取主显示器信息并创建窗口
+async function createOptimizedWindow(url: string) {
+  // 获取显示器信息
+  const displayInfo = await chrome.system.display.getInfo();
+  const primaryDisplay = displayInfo[0]; // 使用主显示器
+
+  // 计算窗口大小 (90% 的屏幕尺寸)
+  const width = Math.round(primaryDisplay.workArea.width * 0.9);
+  const height = Math.round(primaryDisplay.workArea.height * 0.9);
+
+  // 计算窗口位置使其居中
+  const left = Math.round(primaryDisplay.workArea.left + (primaryDisplay.workArea.width - width) / 2);
+  const top = Math.round(primaryDisplay.workArea.top + (primaryDisplay.workArea.height - height) / 2);
+
+  // 创建窗口
+  await chrome.windows.create({
+    url,
+    type: 'popup',
+    width,
+    height,
+    left,
+    top,
+  });
+}
