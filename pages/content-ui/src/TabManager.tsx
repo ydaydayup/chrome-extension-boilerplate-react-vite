@@ -126,15 +126,25 @@ export function PreviewComponent() {
       },
       {} as Record<string, number>,
     );
-
+    // 函数：获取数量大于 1 的键的个数
+    function getCountOfUrlsWithFrequencyGreaterThanOne(data) {
+      let count = 0;
+      for (const url in data) {
+        if (data[url] > 1) {
+          count++;
+        }
+      }
+      return count;
+    }
     // 获取域名总数
-    const uniqueDomainCount = Object.keys(domainCounts).length;
+    const duplicateDomain = getCountOfUrlsWithFrequencyGreaterThanOne(domainCounts);
+    // Object.keys(domainCounts).length;
     const mappedChildren = previewTabs.map((tab, index, array) => {
       const favIconUrl = tab.favIconURL || tab.favIconUrl || '';
       const previewUrl = localStorage?.[tab.id!]?.dataURL || '';
       const domain = getDomain(tab.url || '');
       const domainFrequency = domainCounts[domain] || 0;
-      const borderStyle = generateBorderStyleForDomain(domain, uniqueDomainCount, domainFrequency);
+      const borderStyle = generateBorderStyleForDomain(domain, duplicateDomain, domainFrequency);
 
       const style: React.CSSProperties = {
         position: 'relative',
@@ -143,7 +153,7 @@ export function PreviewComponent() {
       if (borderStyle.colors.length > 0) {
         // 生成多层边框的样式
         const borderStyles = borderStyle.colors.map((color, index) => {
-          const offset = (index + 1) * 3; // 每个边框之间的间距
+          const offset = (index + 1) * 2; // 每个边框之间的间距
           return `${color} 0 0 0 ${offset}px`;
         });
 
@@ -158,7 +168,7 @@ export function PreviewComponent() {
           data-title={tab.title}
           data-url={tab.url}
           style={style}
-          className={`!p-0   cursor-pointer grid grid-cols-2 grid-row-2  w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
+          className={`!p-0  cursor-pointer grid grid-cols-2 grid-row-2  w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
           onMouseDown={(e: React.MouseEvent) => {
             const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);
             if (e.button === 1 && tabId) {
@@ -182,7 +192,19 @@ export function PreviewComponent() {
             {tab.url || ''}
           </div>
           {previewUrl && <img className={'col-start-1 col-span-2'} alt="Logo" src={previewUrl} />}
-          <span className="p-0 text-xs">{`窗口#${tab.windowGroup}`}</span>
+          <div className="flex gap-2 items-center">
+            <Badge variant="outline" style={{ fontSize: '0.6rem' }} className="px-1.5 py-0.5 text-[15px] font-normal">
+              {`窗口 ${tab.windowGroup}`}
+            </Badge>
+            {tab.selected && (
+              <Badge
+                variant="destructive"
+                style={{ fontSize: '0.6rem' }}
+                className="px-1.5 py-0.5 text-[15px] font-normal">
+                当前标签页
+              </Badge>
+            )}
+          </div>
         </CommandItem>
       );
     });
@@ -283,8 +305,6 @@ export function SearchComponent() {
             return;
           }
           const tabId = target.getAttribute('data-tab');
-          // const tabTitle = target.getAttribute('data-title') || '';
-          // const tabUrl = target.getAttribute('data-url') || '';
           if (tabId === null) {
             return;
           }

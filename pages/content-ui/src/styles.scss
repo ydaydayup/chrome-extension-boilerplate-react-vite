@@ -1,0 +1,24 @@
+[cmdk-item] {
+  content-visibility: auto;
+  //cursor: pointer;
+  //border-radius: 12px;
+  //font-size: 14px;
+  //display: flex;
+  //align-items: center;
+  //gap: 12px;
+  //color: var(--gray12);
+  padding: 8px 8px;
+  margin-right: 8px;
+  font-weight: 500;
+  transition: all 150ms ease;
+  transition-property: transform, background-color, box-shadow;
+  position: relative;
+  &[data-selected='true'] {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translate(4px, -8px);
+    box-shadow: -4px 4px 8px 8px rgb(255, 0, 0) !important;
+    [cmdk-framer-item-subtitle] {
+      color: #ffffff;
+    }
+  }
+}

@@ -2,13 +2,12 @@ import { createRoot } from 'react-dom/client';
 import App from '@src/App';
 import tailwindcssOutput from '../dist/tailwind-output.css?inline';
 import '@extension/ui/dist/global.css';
-// import './framer.scss';
+import styles from './styles.scss?inline';
 const root = document.createElement('div');
 root.id = 'chrome-extension-boilerplate-react-vite-content-view-root';
 
 document.body.append(root);
 
-// const styleIntoShadow = document.createElement('style');
 const rootIntoShadow = document.createElement('div');
 rootIntoShadow.id = 'shadow-root';
 
@@ -23,12 +22,15 @@ if (navigator.userAgent.includes('Firefox')) {
    */
   const styleElement = document.createElement('style');
   styleElement.innerHTML = tailwindcssOutput;
+
   shadowRoot.appendChild(styleElement);
 } else {
   /** Inject styles into shadow dom */
   const globalStyleSheet = new CSSStyleSheet();
   globalStyleSheet.replaceSync(tailwindcssOutput);
-  shadowRoot.adoptedStyleSheets = [globalStyleSheet];
+  const globalStyleSheet2 = new CSSStyleSheet();
+  globalStyleSheet2.replaceSync(styles);
+  shadowRoot.adoptedStyleSheets = [globalStyleSheet, globalStyleSheet2];
 }
 
 shadowRoot.appendChild(rootIntoShadow);

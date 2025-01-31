@@ -36,7 +36,7 @@ export const getDomain = (url: string) => {
   }
 };
 
-const COLORS = ['#FFB6C1', '#98FB98', '#87CEFA', '#DDA0DD', '#F0E68C', '#E6E6FA', '#F08080', '#20B2AA'];
+const COLORS = ['#FFB6C1', '#98FB98', '#87CEFA', '#DDA0DD', '#F0E68C', '#E6E6FA', '#20B2AA'];
 
 interface BorderStyle {
   colors: string[];
@@ -45,7 +45,7 @@ interface BorderStyle {
 
 export const generateBorderStyleForDomain = (
   domain: string,
-  domainCount: number,
+  duplicateDomain: number,
   domainFrequency: number,
 ): BorderStyle => {
   // 如果域名只出现一次，返回空边框样式
@@ -54,7 +54,7 @@ export const generateBorderStyleForDomain = (
   }
 
   // 计算需要的边框数量
-  const borderCount = Math.ceil(domainCount / COLORS.length);
+  const borderCount = Math.ceil(duplicateDomain / COLORS.length);
   // This code snippet calculates a hash value for a given domain string.
   // It iterates over each character in the domain string and updates the
   // `hash` variable by adding the ASCII code of the character to it.

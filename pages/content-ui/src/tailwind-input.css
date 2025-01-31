@@ -6,7 +6,7 @@
 @layer base {
     .large-panel [cmdk-group-items] {
         display: grid;
-        @apply grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 grid-rows-2 gap-x-2
+        @apply grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 grid-rows-2 gap-x-4 gap-y-2
         /*group-[.large-panel]:max-w-80 group-[.large-panel]:overflow-hidden*/
     }
     .alt-tab [cmdk-group-items] {
