@@ -1,4 +1,5 @@
 import { TabId } from '@src/background/types';
+import { panelState } from '@src/background/state';
 
 function faviconURL(u) {
   const url = new URL(chrome.runtime.getURL('/_favicon/'));
@@ -68,15 +69,10 @@ const MIN_CAPTURE_INTERVAL = 500;
  */
 async function capturePage(activeInfo: chrome.tabs.TabActiveInfo) {
   console.log('Capture Visible Tab; ', activeInfo);
-  // if (activeInfo.windowId === undefined) {
-  //   return;
-  // }
+
   // 如果当前activeInfo的tabid和当前活跃的不一致，就直接返回
   const isActiveTab = async () => {
     return activeInfo.tabId === (await activeTab())?.id;
-    // if (activeInfo.tabId !== (await activeTab())?.id) {
-    //   return;
-    // }
   };
   setTimeout(async function () {
     if (!(await isActiveTab())) {
@@ -88,6 +84,10 @@ async function capturePage(activeInfo: chrome.tabs.TabActiveInfo) {
         return;
       }
       if (!(await isActiveTab())) {
+        return;
+      }
+      console.log('[Tab Saver]', panelState.panelId, (await activeTab()).windowId), chrome.runtime.getURL('');
+      if (panelState.panelId === (await activeTab()).windowId) {
         return;
       }
       await canvas2htmlSaver(activeInfo.tabId, dataUrl);
@@ -225,3 +225,8 @@ chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
   }
   debouncedCapturePage(tab);
 });
+
+export const getExtensionIndex = () => {
+  return chrome.runtime.getURL('content-ui/index.html');
+  // return chrome.runtime.getManifest().short_name;
+};

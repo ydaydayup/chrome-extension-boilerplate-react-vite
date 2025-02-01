@@ -50,6 +50,7 @@ function isAlphaNumeric(key: string) {
   if (key.length !== 1) return false;
   return /^[A-Za-z0-9]+$/i.test(key);
 }
+
 // PreviewComponent 是一个可拖拽排序的标签页管理器组件
 // 它使用 @dnd-kit 库实现拖放功能，支持标签页的水平排序
 export function PreviewComponent() {
@@ -58,6 +59,8 @@ export function PreviewComponent() {
   // const activeTab = useRef<chrome.tabs.Tab | null>(null);
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
   const { localStorage } = useStorageState(state => state);
+  const testRef = useRef(null);
+  console.log(testRef.current === localStorage);
   useEffect(() => {
     // 立即执行一次
     initializeTabs();
@@ -145,66 +148,37 @@ export function PreviewComponent() {
     [tabs],
   );
 
+  // 缓存域名计数对象
+  const domainCounts = useMemo(() => {
+    const counts: { [key: string]: number } = {};
+    tabs.forEach(tab => {
+      const domain = getDomain(tab.url || '');
+      counts[domain] = (counts[domain] || 0) + 1;
+    });
+    return counts;
+  }, [tabs]);
+  // 缓存重复域名的数量
+
+  // 分类标签页
+  const [PreviewTabsWithDataURL, PreviewTabsWithoutDataURL] = useMemo(() => {
+    const withDataURL = [];
+    const withoutDataURL = [];
+    for (const tab of tabs) {
+      if (localStorage?.[tab.id!]?.dataURL) {
+        withDataURL.push(tab);
+      } else {
+        withoutDataURL.push(tab);
+      }
+    }
+    return [withDataURL, withoutDataURL];
+  }, [tabs, localStorage]);
+  // 缓存合并后的标签页列表
+  const previewTabs = useMemo(() => {
+    return [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].filter(t => t.id);
+  }, [PreviewTabsWithDataURL, PreviewTabsWithoutDataURL]);
+
   // 使用 useMemo 缓存渲染结果
   const childrens = useMemo(() => {
-    // 缓存域名计数对象
-    const domainCounts = useMemo(() => {
-      const counts: { [key: string]: number } = {};
-      tabs.forEach(tab => {
-        const domain = getDomain(tab.url || '');
-        counts[domain] = (counts[domain] || 0) + 1;
-      });
-      return counts;
-    }, [tabs]);
-
-    // 缓存重复域名的数量
-    const duplicateDomainCount = useMemo(() => {
-      let count = 0;
-      for (const domain in domainCounts) {
-        if (domainCounts[domain] > 1) {
-          count++;
-        }
-      }
-      return count;
-    }, [domainCounts]);
-
-    // 分类标签页
-    const [PreviewTabsWithDataURL, PreviewTabsWithoutDataURL] = useMemo(() => {
-      const withDataURL = [];
-      const withoutDataURL = [];
-      for (const tab of tabs) {
-        if (localStorage?.[tab.id!]?.dataURL) {
-          withDataURL.push(tab);
-        } else {
-          withoutDataURL.push(tab);
-        }
-      }
-      return [withDataURL, withoutDataURL];
-    }, [tabs, localStorage]);
-    // 缓存合并后的标签页列表
-    const previewTabs = useMemo(() => {
-      return [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].filter(t => t.id);
-    }, [PreviewTabsWithDataURL, PreviewTabsWithoutDataURL]);
-
-    // 缓存域名到颜色的映射
-    const domainToColor = useMemo(() => {
-      // 计算每个域名出现的次数
-      const counts = tabs.reduce(
-        (acc, tab) => {
-          const domain = getDomain(tab.url || '');
-          acc[domain] = (acc[domain] || 0) + 1;
-          return acc;
-        },
-        {} as { [key: string]: number },
-      );
-
-      // 为每个域名生成唯一的颜色
-      const colorMap: { [key: string]: string } = {};
-      Object.keys(counts).forEach((domain, index) => {
-        colorMap[domain] = `hsl(${(index * 137.5) % 360}, 70%, 50%)`;
-      });
-      return colorMap;
-    }, [tabs]);
     // 函数：获取数量大于 1 的键的个数
     function getCountOfUrlsWithFrequencyGreaterThanOne(data) {
       let count = 0;
@@ -215,6 +189,7 @@ export function PreviewComponent() {
       }
       return count;
     }
+
     // 获取域名总数
     const duplicateDomain = getCountOfUrlsWithFrequencyGreaterThanOne(domainCounts);
     // Object.keys(domainCounts).length;
@@ -329,15 +304,14 @@ export function PreviewComponent() {
               style.margin = `${borderStyle.count * 3}px`;
               style.boxShadow = borderStyles.join(', ');
             }
-            console.log('style', style);
-            return <SortableTab tab={tab} style={style} previewUrl={previewUrl} favIconUrl={favIconUrl} />;
+            return <SortableTab tab={tab} key={tab.id} style={style} previewUrl={previewUrl} favIconUrl={favIconUrl} />;
           })}
         </SortableContext>
       </DndContext>
     );
-
+    console.log(testRef.current === localStorage, 'TestTestTest');
     return mappedChildren;
-  }, [localStorage, tabs, activeId]);
+  }, [localStorage, tabs]);
 
   // filter 函数用于过滤搜索结果
   // value: 要搜索的文本

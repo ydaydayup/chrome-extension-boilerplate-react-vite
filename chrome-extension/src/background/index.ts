@@ -3,8 +3,9 @@ import { addText, getAllCollectionList, getUrlHtml, searchTest } from './fastgpt
 import type { OnClickData } from '@types/chrome';
 import { getHtmlTextSummary } from '@src/background/kimi';
 import { mostFrequent } from '@src/background/history';
-import { activeTab, getAllTabs, jump2Tab, removeTab, tabDataPrepare } from '@src/background/tab';
+import { activeTab, getAllTabs, getExtensionIndex, jump2Tab, removeTab, tabDataPrepare } from '@src/background/tab';
 import { getOrSetCurrentTab, getStorage } from '@src/background/storage_help';
+import { panelState } from '@src/background/state';
 
 async function getBookmarkTreeNodes() {
   return new Promise((resolve, reject) => {
@@ -166,12 +167,13 @@ chrome.runtime.onInstalled.addListener(details => {
 
 chrome.commands.onCommand.addListener(async (command: string) => {
   if (command === 'tabAssistant') {
-    const url = chrome.runtime.getURL('content-ui/index.html');
+    const url = getExtensionIndex();
     // Create a new window for the tab switcher
     const tabs = await getAllTabs();
     const tabId = await getOrSetCurrentTab(undefined, '新窗口', false);
     console.log('新窗口已创建，窗口ID为：' + tabId, tabs.map(tab => tab.id).includes(tabId));
-    await createOptimizedWindow(url);
+    const result = await createOptimizedWindow(url);
+    panelState.panelId = result!.id!;
   }
 });
 
@@ -236,7 +238,7 @@ async function createOptimizedWindow(url: string) {
     timestamp: new Date().toISOString(),
   });
 
-  await chrome.windows.create({
+  return await chrome.windows.create({
     url,
     type: 'panel',
     width,

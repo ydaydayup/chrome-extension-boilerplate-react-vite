@@ -1,6 +1,6 @@
-import { create } from 'zustand';
+import { create, UseBoundStore } from 'zustand';
 import { sendMessage } from '@src/extensonWrapper';
-
+import _ from 'lodash-es';
 type BookmarkDialog = {
   isOpen: boolean;
   isUpload: boolean;
@@ -29,8 +29,23 @@ export const commonDialogState = create<CommonDialogStateType>(() => ({
   activeTab: null,
 }));
 
+// 工具函数：更新状态并进行相等性检查
+// store: Zustand store 实例
+// newPartialState: 新的部分状态
+export const updateStateWithCheck = <T extends object>(store: UseBoundStore<T>, newPartialState: Partial<T>): void => {
+  const oldState = store.getState();
+  const newState = { ...oldState, ...newPartialState };
+  console.log('updateStateWithCheck before', oldState, newState);
+  // 使用 lodash 的 isEqual 进行深度比较
+  if (_.isEqual(oldState, newState)) {
+    return;
+  }
+  console.log('updateStateWithCheck after', oldState, newState);
+  store.setState(newState);
+};
+
 export const setCommonDialogState = (state: Partial<CommonDialogStateType>) => {
-  commonDialogState.setState({ ...commonDialogState.getState(), ...state });
+  updateStateWithCheck(commonDialogState, state);
 };
 
 export const useTabDialogState = create<TabManagerType>(() => ({
@@ -44,8 +59,9 @@ export const useTabDialogState = create<TabManagerType>(() => ({
   previewTitle: '',
   previewUrl: '',
 }));
+
 export const setTabDialogState = (state: Partial<TabManagerType>) => {
-  useTabDialogState.setState({ ...useTabDialogState.getState(), ...state });
+  updateStateWithCheck(useTabDialogState, state);
 };
 export const useBookmarkDialogState = create<BookmarkDialog>(() => ({
   isOpen: false,
@@ -54,7 +70,7 @@ export const useBookmarkDialogState = create<BookmarkDialog>(() => ({
 }));
 
 export const setBookmarkDialogState = (state: Partial<BookmarkDialog>) => {
-  useBookmarkDialogState.setState({ ...useBookmarkDialogState.getState(), ...state });
+  updateStateWithCheck(useBookmarkDialogState, state);
 };
 type StorageType = { syncStorage?: { [p: string]: any }; localStorage?: { [p: string]: any } };
 
@@ -62,7 +78,8 @@ export const useStorageState = create<StorageType>(() => ({}));
 
 export async function createStorage() {
   const storage: StorageType = (await sendMessage({ greeting: 'getStorage' })) as StorageType;
-  useStorageState.setState({ ...storage });
+  updateStateWithCheck(useStorageState, storage);
+  return storage;
 }
 
 export async function jump2Tab(tab: chrome.tabs.Tab) {
@@ -93,6 +110,8 @@ export const initializeTabs = async () => {
     tab['windowGroup'] = windowId.get(tab.windowId);
   }
   setTabDialogState({ tabs: tabs, isOpen: true });
+  // setTabDialogState({});
+
   await createStorage();
 };
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
@@ -104,9 +123,10 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     // case 'TabsManager':
     //   setTabDialogState({ isOpen: true });
     //   break;
-    case 'getStorage':
-      useStorageState.setState({ ...request.storage });
-      break;
+    // case 'getStorage':
+    //   console.log('getStoragegetStorage', request.storage)
+    //   useStorageState.setState({ ...request.storage });
+    //   break;
     case 'initializeTabs':
       initializeTabs();
       break;
