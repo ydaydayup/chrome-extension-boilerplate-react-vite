@@ -117,99 +117,94 @@ export function PreviewComponent() {
     }),
   );
 
-  // try {
-  //   await chrome.tabs.move(active.id, { index: newIndex });
-  // } catch (error) {
-  //   console.error('移动标签页失败:', error);
-  //   // If the move fails, roll back to the original state
-  //   setTabDialogState({ tabs });
-  // }
   // 处理拖动开始事件
-  // const handleDragStart = useCallback((event: DragStartEvent) => {
-  //   setActiveId(event.active.id);
-  // }, []);
+  const handleDragStart = useCallback((event: { active: { id: number } }) => {
+    setActiveId(event.active.id);
+  }, []);
 
   // 处理拖动结束事件
-  // 1. 更新本地状态
-  // 2. 使用 Chrome API 移动标签页
-  // const handleDragEnd = useCallback(async (event: DragEndEvent) => {
-  //   const { active, over } = event;
-  //
-  //   if (over && active.id !== over.id) {
-  //     const oldIndex = tabs.findIndex((tab) => tab.id === active.id);
-  //     const newIndex = tabs.findIndex((tab) => tab.id === over.id);
-  //
-  //     // 更新本地状态
-  //     const newTabs = arrayMove(tabs, oldIndex, newIndex);
-  //     setTabDialogState({ tabs: newTabs });
-  //
-  //     try {
-  //       // 使用 Chrome API 移动标签页
-  //       // chrome.tabs.move 需要标签页 ID 和目标位置
-  //       await chrome.tabs.move(active.id, { index: newIndex });
-  //     } catch (error) {
-  //       console.error('移动标签页失败:', error);
-  //       // 如果移动失败，回滚本地状态
-  //       setTabDialogState({ tabs });
-  //     }
-  //   }
-
-  //   setActiveId(null);
-  // }, [tabs]);
-
-  const childrens = useMemo(() => {
-    console.log('[Tab Manager]', {
-      event: 'preview_tabs',
-      timestamp: new Date().toISOString(),
-    });
-
-    const handleDragStart = (event: { active: { id: number } }) => {
-      setActiveId(event.active.id);
-    };
-
-    const handleDragEnd = async (event: { active: { id: number }; over: { id: number } | null }) => {
+  const handleDragEnd = useCallback(
+    async (event: { active: { id: number }; over: { id: number } | null }) => {
       const { active, over } = event;
 
       if (over && active.id !== over.id) {
         const oldIndex = tabs.findIndex(tab => tab.id === active.id);
         const newIndex = tabs.findIndex(tab => tab.id === over.id);
 
-        const newTabs = arrayMove(tabs, oldIndex, newIndex);
         try {
           // 使用 Chrome API 移动标签页
-          // chrome.tabs.move 需要标签页 ID 和目标位置
           await chrome.tabs.move(active.id, { index: newIndex });
+          const newTabs = arrayMove(tabs, oldIndex, newIndex);
           setTabDialogState({ tabs: newTabs });
-          setActiveId(null);
         } catch (error) {
           console.error('移动标签页失败:', error);
-          // 如果移动失败，回滚本地状态
-          setTabDialogState({ tabs });
-          return;
         }
       }
-    };
-    const PreviewTabsWithDataURL = [];
-    const PreviewTabsWithoutDataURL = [];
-    for (const tab of tabs) {
-      if (localStorage?.[tab.id!]?.dataURL) {
-        PreviewTabsWithDataURL.push(tab);
-      } else {
-        PreviewTabsWithoutDataURL.push(tab);
-      }
-    }
-    const previewTabs = [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].filter(t => t.id);
-    // const domains = new Set(previewTabs.map(tab => getDomain(tab.url || '')));
-    // 创建域名到颜色的映射
-    // 计算每个域名出现的次数
-    const domainCounts = tabs.reduce(
-      (acc, tab) => {
+      setActiveId(null);
+    },
+    [tabs],
+  );
+
+  // 使用 useMemo 缓存渲染结果
+  const childrens = useMemo(() => {
+    // 缓存域名计数对象
+    const domainCounts = useMemo(() => {
+      const counts: { [key: string]: number } = {};
+      tabs.forEach(tab => {
         const domain = getDomain(tab.url || '');
-        acc[domain] = (acc[domain] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
+        counts[domain] = (counts[domain] || 0) + 1;
+      });
+      return counts;
+    }, [tabs]);
+
+    // 缓存重复域名的数量
+    const duplicateDomainCount = useMemo(() => {
+      let count = 0;
+      for (const domain in domainCounts) {
+        if (domainCounts[domain] > 1) {
+          count++;
+        }
+      }
+      return count;
+    }, [domainCounts]);
+
+    // 分类标签页
+    const [PreviewTabsWithDataURL, PreviewTabsWithoutDataURL] = useMemo(() => {
+      const withDataURL = [];
+      const withoutDataURL = [];
+      for (const tab of tabs) {
+        if (localStorage?.[tab.id!]?.dataURL) {
+          withDataURL.push(tab);
+        } else {
+          withoutDataURL.push(tab);
+        }
+      }
+      return [withDataURL, withoutDataURL];
+    }, [tabs, localStorage]);
+    // 缓存合并后的标签页列表
+    const previewTabs = useMemo(() => {
+      return [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].filter(t => t.id);
+    }, [PreviewTabsWithDataURL, PreviewTabsWithoutDataURL]);
+
+    // 缓存域名到颜色的映射
+    const domainToColor = useMemo(() => {
+      // 计算每个域名出现的次数
+      const counts = tabs.reduce(
+        (acc, tab) => {
+          const domain = getDomain(tab.url || '');
+          acc[domain] = (acc[domain] || 0) + 1;
+          return acc;
+        },
+        {} as { [key: string]: number },
+      );
+
+      // 为每个域名生成唯一的颜色
+      const colorMap: { [key: string]: string } = {};
+      Object.keys(counts).forEach((domain, index) => {
+        colorMap[domain] = `hsl(${(index * 137.5) % 360}, 70%, 50%)`;
+      });
+      return colorMap;
+    }, [tabs]);
     // 函数：获取数量大于 1 的键的个数
     function getCountOfUrlsWithFrequencyGreaterThanOne(data) {
       let count = 0;
@@ -344,19 +339,6 @@ export function PreviewComponent() {
     return mappedChildren;
   }, [localStorage, tabs, activeId]);
 
-  // const filter = useCallback((value: string, search: string, keywords?: string[]) => {
-  //   if (!search) return true;
-  //   const searchLower = search.toLowerCase();
-  //   const valueLower = value.toLowerCase();
-  //
-  //   if (keywords && keywords.length > 0) {
-  //     return keywords.some(keyword => valueLower.includes(keyword.toLowerCase()));
-  //   }
-  //
-  //   return valueLower.includes(searchLower);
-  // }, [localStorage, tabs, activeId]);
-
-  // }, [localStorage, tabs, activeId]);
   // filter 函数用于过滤搜索结果
   // value: 要搜索的文本
   // search: 搜索关键词
