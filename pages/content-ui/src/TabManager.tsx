@@ -26,8 +26,6 @@ import {
 } from '@src/state';
 import { canvas2htmlRetriever } from '@src/screenshot';
 import { generateBorderStyleForDomain, getDomain } from '../utils/tabs';
-import { GridStack, GridStackNode } from 'gridstack';
-import 'gridstack/dist/gridstack.min.css';
 
 // const { CalendarIcon, RocketIcon } = lucide;
 
@@ -54,81 +52,13 @@ function isAlphaNumeric(key: string) {
 export function PreviewComponent() {
   const { isOpen, tabs } = useTabDialogState(state => state);
   const [isInputFocused, setIsInputFocused] = React.useState(true);
+  const activeTab = useRef<chrome.tabs.Tab | null>(null);
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
   const { localStorage } = useStorageState(state => state);
-  const gridRef = useRef<GridStack>();
-  const gridContainerRef = useRef<null | HTMLElement>(null);
-  const [gridReady, setGridReady] = useState(false);
-
-  // 初始化 gridstack
-  useEffect(() => {
-    if (!gridReady || !gridContainerRef.current) return;
-
-    if (!gridRef.current) {
-      const grid = (gridRef.current = GridStack.init(
-        {
-          styleInHead: false,
-          draggable: {
-            handle: '.grid-stack-item-content',
-            appendTo: 'parent',
-          },
-          resizable: {
-            handles: 'e,se,s,sw,w',
-          },
-          float: true,
-          cellHeight: 'auto',
-          column: 6, // 明确指定列数
-          staticGrid: false, // 确保网格可交互
-          acceptWidgets: true,
-          removable: false,
-          disableDrag: false,
-          disableResize: true,
-        },
-        gridContainerRef.current!,
-      ));
-
-      // 关键：手动添加必要样式类
-      gridContainerRef.current.classList.add('grid-stack');
-      console.log('[Tab Manager]', {
-        event: 'initialize_gridstack',
-        timestamp: new Date().toISOString(),
-        grid,
-      });
-      // 处理布局变化
-      const handleChange = (event: Event, items: GridStackNode[]) => {
-        const newOrder = items.map(item => parseInt(item.el.getAttribute('data-tab-id')!));
-        const sortedTabs = newOrder.map(id => tabs.find(tab => tab.id === id)).filter(Boolean) as chrome.tabs.Tab[];
-
-        // 更新浏览器标签顺序
-        sortedTabs.forEach((tab, index) => {
-          try {
-            chrome.tabs.move(tab.id!, { index });
-          } catch (error) {
-            console.error('标签移动失败:', error);
-          }
-        });
-      };
-      console.log('[Tab Manager]', {
-        event: 'change_gridstack',
-        timestamp: new Date().toISOString(),
-        grid,
-      });
-      // grid.on('change', handleChange);
-    }
-    return () => {
-      console.log('[Tab Manager]', {
-        event: 'close_gridstack',
-        timestamp: new Date().toISOString(),
-        grid: gridRef.current,
-      });
-      gridRef.current?.off('change');
-      gridRef.current?.destroy();
-    };
-  }, [gridReady]);
-
   useEffect(() => {
     // 立即执行一次
     initializeTabs();
+
     // 设置定时器，每分钟执行一次
     const timer = setInterval(() => {
       console.log('[Tab Manager]', {
@@ -136,7 +66,7 @@ export function PreviewComponent() {
         timestamp: new Date().toISOString(),
       });
       initializeTabs();
-    }, 100000); // 60000ms = 1分钟
+    }, 1000); // 60000ms = 1分钟
 
     // 清理函数
     return () => {
@@ -168,6 +98,8 @@ export function PreviewComponent() {
     isOpen = true;
     setTabDialogState({ isOpen });
   };
+  const [commandListRef, setCommandListRef] = useState<HTMLDivElement | null>(null);
+
   const childrens = useMemo(() => {
     console.log('[Tab Manager]', {
       event: 'preview_tabs',
@@ -194,7 +126,6 @@ export function PreviewComponent() {
       },
       {} as Record<string, number>,
     );
-
     // 函数：获取数量大于 1 的键的个数
     function getCountOfUrlsWithFrequencyGreaterThanOne(data) {
       let count = 0;
@@ -205,7 +136,6 @@ export function PreviewComponent() {
       }
       return count;
     }
-
     // 获取域名总数
     const duplicateDomain = getCountOfUrlsWithFrequencyGreaterThanOne(domainCounts);
     // Object.keys(domainCounts).length;
@@ -238,7 +168,7 @@ export function PreviewComponent() {
           data-title={tab.title}
           data-url={tab.url}
           style={style}
-          className={`grid-stack-item !p-0  cursor-pointer grid grid-cols-2 grid-row-2  w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
+          className={`!p-0  cursor-pointer grid grid-cols-2 grid-row-2  w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
           onMouseDown={(e: React.MouseEvent) => {
             const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);
             if (e.button === 1 && tabId) {
@@ -253,29 +183,27 @@ export function PreviewComponent() {
               setOpen(false);
             });
           }}>
-          <div className="grid-stack-item-content">
-            <div className={'row-span-1 col-span-2 gap-x-1 items-center grid grid-cols-[auto_1fr]'}>
-              <FavIconAvatar favIconUrl={favIconUrl} className={'row-start-1 w-4 h-4'} />
-              <span className={'row-start-1 text-xs'}>{tab.title || ''}</span>
-              <div className={'hidden row-start-1'}>{tab.id || ''}</div>
-            </div>
-            <div className={'col-start-1 col-span-2 '} style={{ fontSize: '0.6rem' }}>
-              {tab.url || ''}
-            </div>
-            {previewUrl && <img className={'col-start-1 col-span-2'} alt="Logo" src={previewUrl} />}
-            <div className="flex gap-2 items-center">
-              <Badge variant="outline" style={{ fontSize: '0.6rem' }} className="px-1.5 py-0.5 text-[15px] font-normal">
-                {`窗口 ${tab.windowGroup}`}
+          <div className={'row-span-1 col-span-2 gap-x-1 items-center grid grid-cols-[auto_1fr]'}>
+            <FavIconAvatar favIconUrl={favIconUrl} className={'row-start-1 w-4 h-4'} />
+            <span className={'row-start-1 text-xs'}>{tab.title || ''}</span>
+            <div className={'hidden row-start-1'}>{tab.id || ''}</div>
+          </div>
+          <div className={'col-start-1 col-span-2 '} style={{ fontSize: '0.6rem' }}>
+            {tab.url || ''}
+          </div>
+          {previewUrl && <img className={'col-start-1 col-span-2'} alt="Logo" src={previewUrl} />}
+          <div className="flex gap-2 items-center">
+            <Badge variant="outline" style={{ fontSize: '0.6rem' }} className="px-1.5 py-0.5 text-[15px] font-normal">
+              {`窗口 ${tab.windowGroup}`}
+            </Badge>
+            {tab.selected && (
+              <Badge
+                variant="destructive"
+                style={{ fontSize: '0.6rem' }}
+                className="px-1.5 py-0.5 text-[15px] font-normal">
+                当前标签页
               </Badge>
-              {tab.selected && (
-                <Badge
-                  variant="destructive"
-                  style={{ fontSize: '0.6rem' }}
-                  className="px-1.5 py-0.5 text-[15px] font-normal">
-                  当前标签页
-                </Badge>
-              )}
-            </div>
+            )}
           </div>
         </CommandItem>
       );
@@ -294,36 +222,6 @@ export function PreviewComponent() {
       return 1;
     return 0;
   }, []);
-
-  useEffect(() => {
-    if (gridRef.current && gridContainerRef.current) {
-      // 强制重新初始化
-      gridRef.current.destroy();
-      gridRef.current = null;
-      const grid = (gridRef.current = GridStack.init(
-        {
-          styleInHead: false,
-          draggable: {
-            handle: '.grid-stack-item-content',
-            appendTo: 'parent',
-          },
-          resizable: {
-            handles: 'e,se,s,sw,w',
-          },
-          float: true,
-          cellHeight: 'auto',
-          column: 6, // 明确指定列数
-          staticGrid: false, // 确保网格可交互
-          acceptWidgets: true,
-          removable: false,
-          disableDrag: false,
-          disableResize: true,
-        },
-        gridContainerRef.current!,
-      ));
-      grid.makeWidget(gridContainerRef.current.children);
-    }
-  }, [tabs]); // 当标签变化时刷新网格
 
   return (
     <>
@@ -344,37 +242,13 @@ export function PreviewComponent() {
             onBlur={() => setIsInputFocused(false)}
             placeholder="Type a command or search..."
           />
-          <CommandList className={'max-h-[80svh] group-[.large-panel]:max-w-svh group-[.large-panel]:max-h-lvh'}>
+          <CommandList
+            className={'max-h-[80svh] group-[.large-panel]:max-w-svh group-[.large-panel]:max-h-lvh'}
+            ref={setCommandListRef}>
             <CommandEmpty>No results found.</CommandEmpty>
-            <CommandGroup heading={'tabs'}>
-              <div
-                ref={node => {
-                  gridContainerRef.current = node;
-                  setGridReady(!!node);
-                }}
-                className={
-                  'overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground group-[.large-panel]:max-w-[svw] grid-stack'
-                }>
-                {' '}
-                {childrens}
-              </div>
-              {/*<div ref={node => {*/}
-              {/*  gridContainerRef.current = node;*/}
-              {/*  setGridReady(!!node);*/}
-              {/*}}>*/}
-              {/*</div>*/}
+            <CommandGroup className={'group-[.large-panel]:max-w-[svw]'} heading={'tabs'}>
+              {childrens}
             </CommandGroup>
-            {/*<CommandGroup  ref={node => {*/}
-            {/*  gridContainerRef.current = node;*/}
-            {/*  setGridReady(!!node)}}*/}
-            {/*  className={'group-[.large-panel]:max-w-[svw] grid-stack'} heading={'tabs'}>*/}
-            {/*  {childrens}*/}
-            {/*  /!*<div ref={node => {*!/*/}
-            {/*  /!*  gridContainerRef.current = node;*!/*/}
-            {/*  /!*  setGridReady(!!node);*!/*/}
-            {/*  /!*}}>*!/*/}
-            {/*  /!*</div>*!/*/}
-            {/*</CommandGroup>*/}
           </CommandList>
         </CommandDialog>
       </div>
