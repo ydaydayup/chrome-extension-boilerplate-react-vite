@@ -28,7 +28,11 @@ import { canvas2htmlRetriever } from '@src/screenshot';
 import { generateBorderStyleForDomain, getDomain } from '../utils/tabs';
 
 // const { CalendarIcon, RocketIcon } = lucide;
-
+// 添加新的类型定义
+interface DragItem {
+  id: number;
+  domain: string;
+}
 export function FavIconAvatar({
   favIconUrl,
   ...props
@@ -55,6 +59,9 @@ export function PreviewComponent() {
   const activeTab = useRef<chrome.tabs.Tab | null>(null);
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
   const { localStorage } = useStorageState(state => state);
+  const [draggedItem, setDraggedItem] = useState<DragItem | null>(null);
+  const [isDraggingGroup, setIsDraggingGroup] = useState(false);
+
   useEffect(() => {
     // 立即执行一次
     initializeTabs();
@@ -99,6 +106,62 @@ export function PreviewComponent() {
     setTabDialogState({ isOpen });
   };
   const [commandListRef, setCommandListRef] = useState<HTMLDivElement | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, tab: chrome.tabs.Tab, domain: string) => {
+    e.dataTransfer.setData('text/plain', String(tab.id));
+    setDraggedItem({ id: tab.id!, domain });
+    setIsDraggingGroup(e.shiftKey);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.add('drag-over');
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.currentTarget.classList.remove('drag-over');
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetTab: chrome.tabs.Tab) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+
+    if (!draggedItem) return;
+
+    const sourceTabId = draggedItem.id;
+    const targetTabId = targetTab.id!;
+    if (sourceTabId === targetTabId) return;
+
+    const updatedTabs = [...tabs];
+    const sourceIndex = updatedTabs.findIndex(t => t.id === sourceTabId);
+    const targetIndex = updatedTabs.findIndex(t => t.id === targetTabId);
+
+    if (isDraggingGroup) {
+      const sameDomainTabs = updatedTabs.filter(t => getDomain(t.url || '') === draggedItem.domain);
+      sameDomainTabs.forEach(tab => {
+        const index = updatedTabs.findIndex(t => t.id === tab.id);
+        updatedTabs.splice(index, 1);
+      });
+      updatedTabs.splice(targetIndex, 0, ...sameDomainTabs);
+    } else {
+      const [movedTab] = updatedTabs.splice(sourceIndex, 1);
+      updatedTabs.splice(targetIndex, 0, movedTab);
+    }
+
+    setTabDialogState({ tabs: updatedTabs });
+
+    try {
+      await chrome.tabs.move(sourceTabId, { index: targetIndex });
+      if (isDraggingGroup) {
+        const sameDomainTabs = tabs.filter(t => getDomain(t.url || '') === draggedItem.domain && t.id !== sourceTabId);
+        for (const tab of sameDomainTabs) {
+          await chrome.tabs.move(tab.id!, { index: targetIndex });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to move tab:', error);
+    }
+  };
 
   const childrens = useMemo(() => {
     console.log('[Tab Manager]', {
@@ -168,7 +231,12 @@ export function PreviewComponent() {
           data-title={tab.title}
           data-url={tab.url}
           style={style}
-          className={`!p-0  cursor-pointer grid grid-cols-2 grid-row-2  w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
+          draggable
+          onDragStart={e => handleDragStart(e, tab, getDomain(tab.url || ''))}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={e => handleDrop(e, tab)}
+          className={`!p-0 cursor-move grid grid-cols-2 grid-row-2 w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
           onMouseDown={(e: React.MouseEvent) => {
             const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);
             if (e.button === 1 && tabId) {
@@ -210,7 +278,15 @@ export function PreviewComponent() {
     });
 
     return mappedChildren;
-  }, [localStorage]);
+  }, [localStorage, draggedItem, isDraggingGroup]);
+
+  useEffect(() => {
+    return () => {
+      setDraggedItem(null);
+      setIsDraggingGroup(false);
+    };
+  }, []);
+
   const filter = useCallback((value: string, search: string, keywords?: string[]) => {
     const extendValue = (value + ' ' + (keywords ? keywords.join(' ') : '')).toLowerCase();
     const searchKey = search.toLowerCase().split(' ');
