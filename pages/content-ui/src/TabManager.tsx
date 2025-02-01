@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DndContext, DragOverlay, closestCenter, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import {
   Avatar,
   AvatarFallback,
@@ -28,11 +30,7 @@ import { canvas2htmlRetriever } from '@src/screenshot';
 import { generateBorderStyleForDomain, getDomain } from '../utils/tabs';
 
 // const { CalendarIcon, RocketIcon } = lucide;
-// 添加新的类型定义
-interface DragItem {
-  id: number;
-  domain: string;
-}
+
 export function FavIconAvatar({
   favIconUrl,
   ...props
@@ -52,16 +50,14 @@ function isAlphaNumeric(key: string) {
   if (key.length !== 1) return false;
   return /^[A-Za-z0-9]+$/i.test(key);
 }
-
+// PreviewComponent 是一个可拖拽排序的标签页管理器组件
+// 它使用 @dnd-kit 库实现拖放功能，支持标签页的水平排序
 export function PreviewComponent() {
   const { isOpen, tabs } = useTabDialogState(state => state);
   const [isInputFocused, setIsInputFocused] = React.useState(true);
-  const activeTab = useRef<chrome.tabs.Tab | null>(null);
+  // const activeTab = useRef<chrome.tabs.Tab | null>(null);
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
   const { localStorage } = useStorageState(state => state);
-  const [draggedItem, setDraggedItem] = useState<DragItem | null>(null);
-  const [isDraggingGroup, setIsDraggingGroup] = useState(false);
-
   useEffect(() => {
     // 立即执行一次
     initializeTabs();
@@ -107,67 +103,92 @@ export function PreviewComponent() {
   };
   const [commandListRef, setCommandListRef] = useState<HTMLDivElement | null>(null);
 
-  const handleDragStart = (e: React.DragEvent, tab: chrome.tabs.Tab, domain: string) => {
-    e.dataTransfer.setData('text/plain', String(tab.id));
-    setDraggedItem({ id: tab.id!, domain });
-    setIsDraggingGroup(e.shiftKey);
-  };
+  // 当前正在拖动的标签页的 ID
+  const [activeId, setActiveId] = useState<number | null>(null);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.currentTarget.classList.add('drag-over');
-  };
+  // 配置拖动传感器
+  // PointerSensor: 用于检测鼠标/触摸输入
+  // activationConstraint.distance: 需要移动 8 像素才会触发拖动，防止误触
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+  );
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.currentTarget.classList.remove('drag-over');
-  };
+  // try {
+  //   await chrome.tabs.move(active.id, { index: newIndex });
+  // } catch (error) {
+  //   console.error('移动标签页失败:', error);
+  //   // If the move fails, roll back to the original state
+  //   setTabDialogState({ tabs });
+  // }
+  // 处理拖动开始事件
+  // const handleDragStart = useCallback((event: DragStartEvent) => {
+  //   setActiveId(event.active.id);
+  // }, []);
 
-  const handleDrop = async (e: React.DragEvent, targetTab: chrome.tabs.Tab) => {
-    e.preventDefault();
-    e.currentTarget.classList.remove('drag-over');
+  // 处理拖动结束事件
+  // 1. 更新本地状态
+  // 2. 使用 Chrome API 移动标签页
+  // const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+  //   const { active, over } = event;
+  //
+  //   if (over && active.id !== over.id) {
+  //     const oldIndex = tabs.findIndex((tab) => tab.id === active.id);
+  //     const newIndex = tabs.findIndex((tab) => tab.id === over.id);
+  //
+  //     // 更新本地状态
+  //     const newTabs = arrayMove(tabs, oldIndex, newIndex);
+  //     setTabDialogState({ tabs: newTabs });
+  //
+  //     try {
+  //       // 使用 Chrome API 移动标签页
+  //       // chrome.tabs.move 需要标签页 ID 和目标位置
+  //       await chrome.tabs.move(active.id, { index: newIndex });
+  //     } catch (error) {
+  //       console.error('移动标签页失败:', error);
+  //       // 如果移动失败，回滚本地状态
+  //       setTabDialogState({ tabs });
+  //     }
+  //   }
 
-    if (!draggedItem) return;
-
-    const sourceTabId = draggedItem.id;
-    const targetTabId = targetTab.id!;
-    if (sourceTabId === targetTabId) return;
-
-    const updatedTabs = [...tabs];
-    const sourceIndex = updatedTabs.findIndex(t => t.id === sourceTabId);
-    const targetIndex = updatedTabs.findIndex(t => t.id === targetTabId);
-
-    if (isDraggingGroup) {
-      const sameDomainTabs = updatedTabs.filter(t => getDomain(t.url || '') === draggedItem.domain);
-      sameDomainTabs.forEach(tab => {
-        const index = updatedTabs.findIndex(t => t.id === tab.id);
-        updatedTabs.splice(index, 1);
-      });
-      updatedTabs.splice(targetIndex, 0, ...sameDomainTabs);
-    } else {
-      const [movedTab] = updatedTabs.splice(sourceIndex, 1);
-      updatedTabs.splice(targetIndex, 0, movedTab);
-    }
-
-    setTabDialogState({ tabs: updatedTabs });
-
-    try {
-      await chrome.tabs.move(sourceTabId, { index: targetIndex });
-      if (isDraggingGroup) {
-        const sameDomainTabs = tabs.filter(t => getDomain(t.url || '') === draggedItem.domain && t.id !== sourceTabId);
-        for (const tab of sameDomainTabs) {
-          await chrome.tabs.move(tab.id!, { index: targetIndex });
-        }
-      }
-    } catch (error) {
-      console.error('Failed to move tab:', error);
-    }
-  };
+  //   setActiveId(null);
+  // }, [tabs]);
 
   const childrens = useMemo(() => {
     console.log('[Tab Manager]', {
       event: 'preview_tabs',
       timestamp: new Date().toISOString(),
     });
+
+    const handleDragStart = (event: { active: { id: number } }) => {
+      setActiveId(event.active.id);
+    };
+
+    const handleDragEnd = async (event: { active: { id: number }; over: { id: number } | null }) => {
+      const { active, over } = event;
+
+      if (over && active.id !== over.id) {
+        const oldIndex = tabs.findIndex(tab => tab.id === active.id);
+        const newIndex = tabs.findIndex(tab => tab.id === over.id);
+
+        const newTabs = arrayMove(tabs, oldIndex, newIndex);
+        try {
+          // 使用 Chrome API 移动标签页
+          // chrome.tabs.move 需要标签页 ID 和目标位置
+          await chrome.tabs.move(active.id, { index: newIndex });
+          setTabDialogState({ tabs: newTabs });
+          setActiveId(null);
+        } catch (error) {
+          console.error('移动标签页失败:', error);
+          // 如果移动失败，回滚本地状态
+          setTabDialogState({ tabs });
+          return;
+        }
+      }
+    };
     const PreviewTabsWithDataURL = [];
     const PreviewTabsWithoutDataURL = [];
     for (const tab of tabs) {
@@ -202,41 +223,44 @@ export function PreviewComponent() {
     // 获取域名总数
     const duplicateDomain = getCountOfUrlsWithFrequencyGreaterThanOne(domainCounts);
     // Object.keys(domainCounts).length;
-    const mappedChildren = previewTabs.map((tab, index, array) => {
-      const favIconUrl = tab.favIconURL || tab.favIconUrl || '';
-      const previewUrl = localStorage?.[tab.id!]?.dataURL || '';
-      const domain = getDomain(tab.url || '');
-      const domainFrequency = domainCounts[domain] || 0;
-      const borderStyle = generateBorderStyleForDomain(domain, duplicateDomain, domainFrequency);
+    // SortableTabProps 定义了可拖拽标签页组件所需的属性
+    // tab: 标签页数据
+    // style: 样式对象，包含位置和边框样式
+    // previewUrl: 标签页预览图的 URL
+    // favIconUrl: 标签页图标的 URL
+    interface SortableTabProps {
+      tab: (typeof tabs)[0];
+      style: React.CSSProperties;
+      previewUrl: string;
+      favIconUrl: string;
+    }
 
-      const style: React.CSSProperties = {
-        position: 'relative',
-        borderRadius: '4px',
+    // SortableTab 是一个可拖拽的标签页组件
+    // 使用 useSortable 钩子来实现拖拽功能
+    // attributes: 需要应用到可拖拽元素的属性
+    // listeners: 需要应用到可拖拽元素的事件监听器
+    // setNodeRef: 用于设置可拖拽元素的 ref
+    // transform: 当前变换，用于在拖动时移动元素
+    // transition: 当前过渡，用于平滑动画
+    const SortableTab = ({ tab, style, previewUrl, favIconUrl }: SortableTabProps) => {
+      const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: tab.id });
+      // 合并原有样式和拖拽相关的样式
+      const sortableStyle = {
+        ...style,
+        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+        transition,
       };
-      if (borderStyle.colors.length > 0) {
-        // 生成多层边框的样式
-        const borderStyles = borderStyle.colors.map((color, index) => {
-          const offset = (index + 1) * 2; // 每个边框之间的间距
-          return `${color} 0 0 0 ${offset}px`;
-        });
 
-        style.margin = `${borderStyle.count * 3}px`;
-        style.boxShadow = borderStyles.join(', ');
-      }
-      console.log('style', style);
       return (
         <CommandItem
-          key={tab.id}
+          ref={setNodeRef}
+          {...attributes}
+          {...listeners}
           data-tab={tab.id}
           data-title={tab.title}
           data-url={tab.url}
-          style={style}
-          draggable
-          onDragStart={e => handleDragStart(e, tab, getDomain(tab.url || ''))}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={e => handleDrop(e, tab)}
-          className={`!p-0 cursor-move grid grid-cols-2 grid-row-2 w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
+          style={sortableStyle}
+          className={`!p-0 cursor-pointer grid grid-cols-2 grid-row-2 w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
           onMouseDown={(e: React.MouseEvent) => {
             const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);
             if (e.button === 1 && tabId) {
@@ -256,7 +280,7 @@ export function PreviewComponent() {
             <span className={'row-start-1 text-xs'}>{tab.title || ''}</span>
             <div className={'hidden row-start-1'}>{tab.id || ''}</div>
           </div>
-          <div className={'col-start-1 col-span-2 '} style={{ fontSize: '0.6rem' }}>
+          <div className={'col-start-1 col-span-2'} style={{ fontSize: '0.6rem' }}>
             {tab.url || ''}
           </div>
           {previewUrl && <img className={'col-start-1 col-span-2'} alt="Logo" src={previewUrl} />}
@@ -275,20 +299,72 @@ export function PreviewComponent() {
           </div>
         </CommandItem>
       );
-    });
+    };
+
+    // 创建拖放上下文，管理整个拖放操作
+    // sensors: 配置的传感器，用于检测拖动操作
+    // collisionDetection: 使用 closestCenter 算法进行碰撞检测
+    // onDragStart: 开始拖动时的回调
+    // onDragEnd: 结束拖动时的回调
+    const mappedChildren = (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}>
+        <SortableContext items={previewTabs.map(tab => tab.id)} strategy={horizontalListSortingStrategy}>
+          {previewTabs.map((tab, index, array) => {
+            const favIconUrl = tab.favIconURL || tab.favIconUrl || '';
+            const previewUrl = localStorage?.[tab.id!]?.dataURL || '';
+            const domain = getDomain(tab.url || '');
+            const domainFrequency = domainCounts[domain] || 0;
+            const borderStyle = generateBorderStyleForDomain(domain, duplicateDomain, domainFrequency);
+
+            const style: React.CSSProperties = {
+              position: 'relative',
+              borderRadius: '4px',
+            };
+            if (borderStyle.colors.length > 0) {
+              // 生成多层边框的样式
+              const borderStyles = borderStyle.colors.map((color, index) => {
+                const offset = (index + 1) * 2; // 每个边框之间的间距
+                return `${color} 0 0 0 ${offset}px`;
+              });
+
+              style.margin = `${borderStyle.count * 3}px`;
+              style.boxShadow = borderStyles.join(', ');
+            }
+            console.log('style', style);
+            return <SortableTab tab={tab} style={style} previewUrl={previewUrl} favIconUrl={favIconUrl} />;
+          })}
+        </SortableContext>
+      </DndContext>
+    );
 
     return mappedChildren;
-  }, [localStorage, draggedItem, isDraggingGroup]);
+  }, [localStorage, tabs, activeId]);
 
-  useEffect(() => {
-    return () => {
-      setDraggedItem(null);
-      setIsDraggingGroup(false);
-    };
-  }, []);
+  // const filter = useCallback((value: string, search: string, keywords?: string[]) => {
+  //   if (!search) return true;
+  //   const searchLower = search.toLowerCase();
+  //   const valueLower = value.toLowerCase();
+  //
+  //   if (keywords && keywords.length > 0) {
+  //     return keywords.some(keyword => valueLower.includes(keyword.toLowerCase()));
+  //   }
+  //
+  //   return valueLower.includes(searchLower);
+  // }, [localStorage, tabs, activeId]);
 
+  // }, [localStorage, tabs, activeId]);
+  // filter 函数用于过滤搜索结果
+  // value: 要搜索的文本
+  // search: 搜索关键词
+  // keywords: 可选的额外关键词数组
   const filter = useCallback((value: string, search: string, keywords?: string[]) => {
+    // 将搜索文本和额外关键词合并，并转换为小写
     const extendValue = (value + ' ' + (keywords ? keywords.join(' ') : '')).toLowerCase();
+    // 将搜索关键词分割为数组并转换为小写
     const searchKey = search.toLowerCase().split(' ');
     if (
       searchKey.every(key => {
