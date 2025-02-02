@@ -166,13 +166,15 @@ chrome.runtime.onInstalled.addListener(details => {
 });
 
 chrome.commands.onCommand.addListener(async (command: string) => {
+  console.log('result');
   if (command === 'tabAssistant') {
     const url = getExtensionIndex();
     // Create a new window for the tab switcher
-    const tabs = await getAllTabs();
-    const tabId = await getOrSetCurrentTab(undefined, '新窗口', false);
-    console.log('新窗口已创建，窗口ID为：' + tabId, tabs.map(tab => tab.id).includes(tabId));
+    // const tabs = await getAllTabs();
+    // const tabId = await getOrSetCurrentTab(undefined, '新窗口', false);
+    // console.log('新窗口已创建，窗口ID为：' + tabId, tabs.map(tab => tab.id).includes(tabId));
     const result = await createOptimizedWindow(url);
+    console.log('result', result);
     panelState.panelId = result!.id!;
   }
 });
@@ -212,7 +214,7 @@ async function createOptimizedWindow(url: string) {
           await chrome.tabs.update(matchingTab.id, { active: true });
         }
 
-        return;
+        return window;
       }
     }
   }

@@ -27,7 +27,8 @@ import {
   useTabDialogState,
 } from '@src/state';
 import { canvas2htmlRetriever } from '@src/screenshot';
-import { generateBorderStyleForDomain, getDomain } from '../utils/tabs';
+import { generateBorderStyleForDomain, getDomain } from '@src/utils/tabs';
+import { usePreserveScroll } from '@src/hooks/usePreserveScroll';
 
 // const { CalendarIcon, RocketIcon } = lucide;
 
@@ -61,6 +62,9 @@ export function PreviewComponent() {
   const { localStorage } = useStorageState(state => state);
   const testRef = useRef(null);
   console.log(testRef.current === localStorage);
+  const scrollRef = useRef<{ top: number; left: number }>({ top: 0, left: 0 });
+  const commandDialogRef = useRef<HTMLDivElement>(null);
+  let refreshFlag = true;
   useEffect(() => {
     // 立即执行一次
     initializeTabs();
@@ -104,7 +108,7 @@ export function PreviewComponent() {
     isOpen = true;
     setTabDialogState({ isOpen });
   };
-  const [commandListRef, setCommandListRef] = useState<HTMLDivElement | null>(null);
+  // const [commandListRef, setCommandListRef] = useState<HTMLDivElement | null>(null);
 
   // 当前正在拖动的标签页的 ID
   const [activeId, setActiveId] = useState<number | null>(null);
@@ -227,6 +231,7 @@ export function PreviewComponent() {
           {...attributes}
           {...listeners}
           data-tab={tab.id}
+          key={tab.id}
           data-title={tab.title}
           data-url={tab.url}
           style={sortableStyle}
@@ -330,7 +335,63 @@ export function PreviewComponent() {
       return 1;
     return 0;
   }, []);
-
+  // 使用 useCallback 缓存滚动处理函数，避免不必要的重渲染
+  const handleScroll = useCallback(() => {
+    if (commandDialogRef.current && !refreshFlag) {
+      // 实时保存当前滚动位置到 ref 中
+      const { scrollTop, scrollLeft } = commandDialogRef.current;
+      scrollRef.current = { top: scrollTop, left: scrollLeft };
+      console.log({ scrollTop });
+    }
+    refreshFlag = false;
+  }, []);
+  useEffect(() => {
+    console.log('*********************', new Date().toISOString());
+  }, []);
+  // 滚动事件监听器管理
+  useEffect(() => {
+    console.log('=============11');
+    const currentRef = commandDialogRef.current;
+    if (currentRef) {
+      console.log('=============22');
+      // 添加滚动事件监听（使用 passive 模式提升滚动性能）
+      currentRef.addEventListener('scroll', handleScroll, { passive: true });
+    }
+    return () => {
+      if (currentRef) {
+        console.log('卸载 handleScroll');
+        // 确保组件卸载时移除监听器，避免内存泄漏
+        currentRef.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, [handleScroll, commandDialogRef.current]); // 依赖稳定的 handleScroll 引用
+  const { ref, onScroll } = usePreserveScroll<HTMLDivElement>();
+  // 滚动位置恢复逻辑
+  useEffect(() => {
+    console.log('=============55');
+    if (isOpen && commandDialogRef.current && scrollRef.current) {
+      console.log('=============33');
+      const { top, left } = scrollRef.current;
+      // 使用 requestAnimationFrame 确保在浏览器重绘后执行
+      requestAnimationFrame(() => {
+        if (commandDialogRef.current) {
+          console.log('=============44');
+          // 同步恢复水平和垂直滚动位置
+          // commandDialogRef.current.scrollTop = 1000;
+          commandDialogRef.current.scrollTop = top;
+          commandDialogRef.current.scrollLeft = left;
+          // setTimeout(()=>{
+          //   console.log('=============77', commandDialogRef);
+          //   commandDialogRef.current.scrollTop = top;
+          //   // commandDialogRef.current.scrollTop = "100px";
+          // }, 1000)
+        }
+      });
+    }
+  }, [tabs, localStorage]); // 当对话框打开状态变化时触发恢复
+  // const CommandListSevice = useMemo(()=>{
+  //   return
+  // })
   return (
     <>
       <div className={'text-primary group large-panel alt-tab'} ref={setContainer}>
@@ -351,8 +412,10 @@ export function PreviewComponent() {
             placeholder="Type a command or search..."
           />
           <CommandList
-            className={'max-h-[80svh] group-[.large-panel]:max-w-svh group-[.large-panel]:max-h-lvh'}
-            ref={setCommandListRef}>
+            ref={ref}
+            onScroll={onScroll}
+            // scrollTop={scrollPos.current}
+            className={'max-h-[80svh] group-[.large-panel]:max-w-svh group-[.large-panel]:max-h-lvh'}>
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup className={'group-[.large-panel]:max-w-[svw]'} heading={'tabs'}>
               {childrens}
