@@ -12,6 +12,7 @@ export function usePreserveScroll<T extends HTMLElement>() {
     const element = ref.current;
     if (element) {
       requestAnimationFrame(() => {
+        console.log('usePreserveScroll requestAnimationFrame', element, scrollPos.current);
         element.scrollTop = scrollPos.current;
       });
     }
