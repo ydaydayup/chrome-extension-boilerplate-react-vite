@@ -110,7 +110,6 @@ export const initializeTabs = async () => {
     tab['windowGroup'] = windowId.get(tab.windowId);
   }
   setTabDialogState({ tabs: tabs, isOpen: true });
-  // setTabDialogState({});
 
   await createStorage();
 };

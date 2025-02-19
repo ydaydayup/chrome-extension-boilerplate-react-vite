@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DndContext, DragOverlay, closestCenter, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import {
@@ -52,6 +52,162 @@ function isAlphaNumeric(key: string) {
   return /^[A-Za-z0-9]+$/i.test(key);
 }
 
+// SortableTabProps definition moved outside
+interface SortableTabProps {
+  tab: chrome.tabs.Tab;
+  style: React.CSSProperties;
+  previewUrl: string;
+  favIconUrl: string;
+  setOpen: (isOpen: boolean) => void;
+}
+
+// SortableTab component moved outside
+const SortableTab = ({ tab, style, previewUrl, favIconUrl, setOpen }: SortableTabProps) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: tab.id });
+  const sortableStyle = {
+    ...style,
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    transition,
+  };
+
+  return (
+    <CommandItem
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      data-tab={tab.id}
+      key={tab.id}
+      data-title={tab.title}
+      data-url={tab.url}
+      style={sortableStyle}
+      className={`!p-0 cursor-pointer grid grid-cols-2 grid-row-2 w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
+      onMouseDown={(e: React.MouseEvent) => {
+        const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);
+        if (e.button === 1 && tabId) {
+          e.preventDefault();
+          removeTab(tabId).then(() => {
+            setOpen(false);
+          });
+        }
+      }}
+      onSelect={() => {
+        jump2Tab(tab).then(() => {
+          setOpen(false);
+        });
+      }}>
+      <div className={'row-span-1 col-span-2 gap-x-1 items-center grid grid-cols-[auto_1fr]'}>
+        <FavIconAvatar favIconUrl={favIconUrl} className={'row-start-1 w-4 h-4'} />
+        <span className={'row-start-1 text-xs'}>{tab.title || ''}</span>
+        <div className={'hidden row-start-1'}>{tab.id || ''}</div>
+      </div>
+      <div className={'col-start-1 col-span-2'} style={{ fontSize: '0.6rem' }}>
+        {tab.url || ''}
+      </div>
+      {previewUrl && <img className={'col-start-1 col-span-2'} alt="Logo" src={previewUrl} />}
+      <div className="flex gap-2 items-center">
+        <Badge variant="outline" style={{ fontSize: '0.6rem' }} className="px-1.5 py-0.5 text-[15px] font-normal">
+          {`窗口 ${tab.windowGroup}`}
+        </Badge>
+        {tab.selected && (
+          <Badge variant="destructive" style={{ fontSize: '0.6rem' }} className="px-1.5 py-0.5 text-[15px] font-normal">
+            当前标签页
+          </Badge>
+        )}
+      </div>
+    </CommandItem>
+  );
+};
+
+const Childrens = memo(
+  ({
+    tabs,
+    localStorage,
+    domainCounts,
+    handleDragStart,
+    handleDragEnd,
+    sensors,
+    setOpen,
+  }: {
+    tabs: chrome.tabs.Tab[];
+    localStorage: any;
+    domainCounts: { [key: string]: number };
+    handleDragStart: (event: { active: { id: number } }) => void;
+    handleDragEnd: (event: { active: { id: number }; over: { id: number } | null }) => void;
+    sensors: any;
+    setOpen: (isOpen: boolean) => void;
+  }) => {
+    // 函数：获取数量大于 1 的键的个数
+    function getCountOfUrlsWithFrequencyGreaterThanOne(data) {
+      let count = 0;
+      for (const url in data) {
+        if (data[url] > 1) {
+          count++;
+        }
+      }
+      return count;
+    }
+
+    // 获取域名总数
+    const duplicateDomain = getCountOfUrlsWithFrequencyGreaterThanOne(domainCounts);
+
+    // SortableTabProps 定义了可拖拽标签页组件所需的属性
+    // tab: 标签页数据
+    // style: 样式对象，包含位置和边框样式
+    // previewUrl: 标签页预览图的 URL
+    // favIconUrl: 标签页图标的 URL
+    // SortableTab 是一个可拖拽的标签页组件
+    // 使用 useSortable 钩子来实现拖拽功能
+    // attributes: 需要应用到可拖拽元素的属性
+    // listeners: 需要应用到可拖拽元素的事件监听器
+    // setNodeRef: 用于设置可拖拽元素的 ref
+    // transform: 当前变换，用于在拖动时移动元素
+    // transition: 当前过渡，用于平滑动画
+
+    const previewTabs = tabs.filter(t => t.id);
+
+    return (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}>
+        <SortableContext items={previewTabs.map(tab => tab.id)} strategy={horizontalListSortingStrategy}>
+          {previewTabs.map(tab => {
+            const favIconUrl = tab.favIconURL || tab.favIconUrl || '';
+            const previewUrl = localStorage?.[tab.id!]?.dataURL || '';
+            const domain = getDomain(tab.url || '');
+            const domainFrequency = domainCounts[domain] || 0;
+            const borderStyle = generateBorderStyleForDomain(domain, duplicateDomain, domainFrequency);
+
+            const style: React.CSSProperties = {
+              position: 'relative',
+              borderRadius: '4px',
+            };
+            if (borderStyle.colors.length > 0) {
+              const borderStyles = borderStyle.colors.map((color, index) => {
+                const offset = (index + 1) * 2;
+                return `${color} 0 0 0 ${offset}px`;
+              });
+
+              style.margin = `${borderStyle.count * 3}px`;
+              style.boxShadow = borderStyles.join(', ');
+            }
+            return (
+              <SortableTab
+                tab={tab}
+                key={tab.id}
+                style={style}
+                previewUrl={previewUrl}
+                favIconUrl={favIconUrl}
+                setOpen={setOpen}
+              />
+            );
+          })}
+        </SortableContext>
+      </DndContext>
+    );
+  },
+);
 // PreviewComponent 是一个可拖拽排序的标签页管理器组件
 // 它使用 @dnd-kit 库实现拖放功能，支持标签页的水平排序
 export function PreviewComponent() {
@@ -62,10 +218,6 @@ export function PreviewComponent() {
   const { localStorage } = useStorageState(state => state);
   const testRef = useRef(null);
   console.log(testRef.current === localStorage);
-  const scrollRef = useRef<{ top: number; left: number }>({ top: 0, left: 0 });
-  const commandDialogRef = useRef<HTMLDivElement>(null);
-  let refreshFlag = true;
-  console.log('........................*************');
   useEffect(() => {
     // 立即执行一次
     console.log('[Tab Manager]', {
@@ -81,7 +233,7 @@ export function PreviewComponent() {
         timestamp: new Date().toISOString(),
       });
       initializeTabs();
-    }, 1000); // 60000ms = 1分钟
+    }, 500); // 60000ms = 1分钟
 
     // 清理函数
     return () => {
@@ -187,151 +339,11 @@ export function PreviewComponent() {
     return [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].filter(t => t.id);
   }, [PreviewTabsWithDataURL, PreviewTabsWithoutDataURL]);
 
-  // 使用 useMemo 缓存渲染结果
-  const childrens = useMemo(() => {
-    // 函数：获取数量大于 1 的键的个数
-    function getCountOfUrlsWithFrequencyGreaterThanOne(data) {
-      let count = 0;
-      for (const url in data) {
-        if (data[url] > 1) {
-          count++;
-        }
-      }
-      return count;
-    }
+  const { ref, onScroll } = usePreserveScroll<HTMLDivElement>();
 
-    // 获取域名总数
-    const duplicateDomain = getCountOfUrlsWithFrequencyGreaterThanOne(domainCounts);
-    // Object.keys(domainCounts).length;
-    // SortableTabProps 定义了可拖拽标签页组件所需的属性
-    // tab: 标签页数据
-    // style: 样式对象，包含位置和边框样式
-    // previewUrl: 标签页预览图的 URL
-    // favIconUrl: 标签页图标的 URL
-    interface SortableTabProps {
-      tab: (typeof tabs)[0];
-      style: React.CSSProperties;
-      previewUrl: string;
-      favIconUrl: string;
-    }
-
-    // SortableTab 是一个可拖拽的标签页组件
-    // 使用 useSortable 钩子来实现拖拽功能
-    // attributes: 需要应用到可拖拽元素的属性
-    // listeners: 需要应用到可拖拽元素的事件监听器
-    // setNodeRef: 用于设置可拖拽元素的 ref
-    // transform: 当前变换，用于在拖动时移动元素
-    // transition: 当前过渡，用于平滑动画
-    const SortableTab = ({ tab, style, previewUrl, favIconUrl }: SortableTabProps) => {
-      const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: tab.id });
-      // 合并原有样式和拖拽相关的样式
-      const sortableStyle = {
-        ...style,
-        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-        transition,
-      };
-
-      return (
-        <CommandItem
-          ref={setNodeRef}
-          {...attributes}
-          {...listeners}
-          data-tab={tab.id}
-          key={tab.id}
-          data-title={tab.title}
-          data-url={tab.url}
-          style={sortableStyle}
-          className={`!p-0 cursor-pointer grid grid-cols-2 grid-row-2 w-full whitespace-nowrap overflow-hidden text-ellipsis place-items-start content-start ${previewUrl ? 'row-span-2' : ''}`}
-          onMouseDown={(e: React.MouseEvent) => {
-            const tabId = parseInt(e.currentTarget.getAttribute('data-tab') || '0', 10);
-            if (e.button === 1 && tabId) {
-              e.preventDefault();
-              removeTab(tabId).then(() => {
-                setTabDialogState({ tabs: tabs.filter(t => t.id !== tabId) });
-              });
-            }
-          }}
-          onSelect={() => {
-            jump2Tab(tab).then(() => {
-              setOpen(false);
-            });
-          }}>
-          <div className={'row-span-1 col-span-2 gap-x-1 items-center grid grid-cols-[auto_1fr]'}>
-            <FavIconAvatar favIconUrl={favIconUrl} className={'row-start-1 w-4 h-4'} />
-            <span className={'row-start-1 text-xs'}>{tab.title || ''}</span>
-            <div className={'hidden row-start-1'}>{tab.id || ''}</div>
-          </div>
-          <div className={'col-start-1 col-span-2'} style={{ fontSize: '0.6rem' }}>
-            {tab.url || ''}
-          </div>
-          {previewUrl && <img className={'col-start-1 col-span-2'} alt="Logo" src={previewUrl} />}
-          <div className="flex gap-2 items-center">
-            <Badge variant="outline" style={{ fontSize: '0.6rem' }} className="px-1.5 py-0.5 text-[15px] font-normal">
-              {`窗口 ${tab.windowGroup}`}
-            </Badge>
-            {tab.selected && (
-              <Badge
-                variant="destructive"
-                style={{ fontSize: '0.6rem' }}
-                className="px-1.5 py-0.5 text-[15px] font-normal">
-                当前标签页
-              </Badge>
-            )}
-          </div>
-        </CommandItem>
-      );
-    };
-
-    // 创建拖放上下文，管理整个拖放操作
-    // sensors: 配置的传感器，用于检测拖动操作
-    // collisionDetection: 使用 closestCenter 算法进行碰撞检测
-    // onDragStart: 开始拖动时的回调
-    // onDragEnd: 结束拖动时的回调
-    const mappedChildren = (
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}>
-        <SortableContext items={previewTabs.map(tab => tab.id)} strategy={horizontalListSortingStrategy}>
-          {previewTabs.map((tab, index, array) => {
-            const favIconUrl = tab.favIconURL || tab.favIconUrl || '';
-            const previewUrl = localStorage?.[tab.id!]?.dataURL || '';
-            const domain = getDomain(tab.url || '');
-            const domainFrequency = domainCounts[domain] || 0;
-            const borderStyle = generateBorderStyleForDomain(domain, duplicateDomain, domainFrequency);
-
-            const style: React.CSSProperties = {
-              position: 'relative',
-              borderRadius: '4px',
-            };
-            if (borderStyle.colors.length > 0) {
-              // 生成多层边框的样式
-              const borderStyles = borderStyle.colors.map((color, index) => {
-                const offset = (index + 1) * 2; // 每个边框之间的间距
-                return `${color} 0 0 0 ${offset}px`;
-              });
-
-              style.margin = `${borderStyle.count * 3}px`;
-              style.boxShadow = borderStyles.join(', ');
-            }
-            return <SortableTab tab={tab} key={tab.id} style={style} previewUrl={previewUrl} favIconUrl={favIconUrl} />;
-          })}
-        </SortableContext>
-      </DndContext>
-    );
-    console.log(testRef.current === localStorage, 'TestTestTest');
-    return mappedChildren;
-  }, [localStorage, tabs]);
-
-  // filter 函数用于过滤搜索结果
-  // value: 要搜索的文本
-  // search: 搜索关键词
-  // keywords: 可选的额外关键词数组
-  const filter = useCallback((value: string, search: string, keywords?: string[]) => {
-    // 将搜索文本和额外关键词合并，并转换为小写
+  // 添加 filter 函数定义
+  const filter = (value: string, search: string, keywords?: string[]) => {
     const extendValue = (value + ' ' + (keywords ? keywords.join(' ') : '')).toLowerCase();
-    // 将搜索关键词分割为数组并转换为小写
     const searchKey = search.toLowerCase().split(' ');
     if (
       searchKey.every(key => {
@@ -340,9 +352,8 @@ export function PreviewComponent() {
     )
       return 1;
     return 0;
-  }, []);
+  };
 
-  const { ref, onScroll } = usePreserveScroll<HTMLDivElement>();
   return (
     <>
       <div className={'text-primary group large-panel alt-tab'} ref={setContainer}>
@@ -368,7 +379,14 @@ export function PreviewComponent() {
             className={'max-h-[80svh] group-[.large-panel]:max-w-svh group-[.large-panel]:max-h-lvh'}>
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup className={'group-[.large-panel]:max-w-[svw]'} heading={'tabs'}>
-              {childrens}
+              <Childrens
+                tabs={tabs}
+                localStorage={localStorage}
+                domainCounts={domainCounts}
+                handleDragStart={handleDragStart}
+                handleDragEnd={handleDragEnd}
+                sensors={sensors}
+                setOpen={setOpen}></Childrens>
             </CommandGroup>
           </CommandList>
         </CommandDialog>
