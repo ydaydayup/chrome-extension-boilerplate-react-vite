@@ -1,5 +1,14 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DndContext, DragOverlay, closestCenter, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  SensorDescriptor,
+  SensorOptions,
+} from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import {
   Avatar,
@@ -21,8 +30,10 @@ import {
   getActiveTab,
   initializeTabs,
   jump2Tab,
+  NewTab,
   removeTab,
   setTabDialogState,
+  TabManagerType,
   useStorageState,
   useTabDialogState,
 } from '@src/state';
@@ -54,7 +65,7 @@ function isAlphaNumeric(key: string) {
 
 // SortableTabProps definition moved outside
 interface SortableTabProps {
-  tab: chrome.tabs.Tab;
+  tab: NewTab;
   style: React.CSSProperties;
   previewUrl: string;
   favIconUrl: string;
@@ -128,12 +139,12 @@ const Childrens = memo(
     sensors,
     setOpen,
   }: {
-    tabs: chrome.tabs.Tab[];
+    tabs: NewTab[];
     localStorage: any;
     domainCounts: { [key: string]: number };
     handleDragStart: (event: { active: { id: number } }) => void;
     handleDragEnd: (event: { active: { id: number }; over: { id: number } | null }) => void;
-    sensors: any;
+    sensors: SensorDescriptor<SensorOptions>[];
     setOpen: (isOpen: boolean) => void;
   }) => {
     // 函数：获取数量大于 1 的键的个数
@@ -322,22 +333,22 @@ export function PreviewComponent() {
   // 缓存重复域名的数量
 
   // 分类标签页
-  const [PreviewTabsWithDataURL, PreviewTabsWithoutDataURL] = useMemo(() => {
-    const withDataURL = [];
-    const withoutDataURL = [];
-    for (const tab of tabs) {
-      if (localStorage?.[tab.id!]?.dataURL) {
-        withDataURL.push(tab);
-      } else {
-        withoutDataURL.push(tab);
-      }
-    }
-    return [withDataURL, withoutDataURL];
-  }, [tabs, localStorage]);
+  // const [PreviewTabsWithDataURL, PreviewTabsWithoutDataURL] = useMemo(() => {
+  //   const withDataURL = [];
+  //   const withoutDataURL = [];
+  //   for (const tab of tabs) {
+  //     if (localStorage?.[tab.id!]?.dataURL) {
+  //       withDataURL.push(tab);
+  //     } else {
+  //       withoutDataURL.push(tab);
+  //     }
+  //   }
+  //   return [withDataURL, withoutDataURL];
+  // }, [tabs, localStorage]);
   // 缓存合并后的标签页列表
-  const previewTabs = useMemo(() => {
-    return [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].filter(t => t.id);
-  }, [PreviewTabsWithDataURL, PreviewTabsWithoutDataURL]);
+  // const previewTabs = useMemo(() => {
+  //   return [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].filter(t => t.id);
+  // }, [PreviewTabsWithDataURL, PreviewTabsWithoutDataURL]);
 
   const { ref, onScroll } = usePreserveScroll<HTMLDivElement>();
 

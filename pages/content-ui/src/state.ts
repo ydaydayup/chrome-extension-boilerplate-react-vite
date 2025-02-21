@@ -8,8 +8,8 @@ type BookmarkDialog = {
 };
 type TabId = chrome.tabs.Tab['id'];
 
-type NewTab = chrome.tabs.Tab & { favIconURL?: string; windowGroup?: number };
-type TabManagerType = {
+export type NewTab = chrome.tabs.Tab & { favIconURL?: string; windowGroup?: number };
+export type TabManagerType = {
   isOpen: boolean;
   isUpload: boolean;
   progress: number;
