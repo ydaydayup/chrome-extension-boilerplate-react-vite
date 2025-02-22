@@ -230,6 +230,22 @@ export function PreviewComponent() {
   const [spacePressed, setSpacePressed] = useState(false);
   const [tabCount, setTabCount] = useState(0);
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+  const [isSortable, setIsSortable] = useState(false);
+  const [sortedTabs, setSortedTabs] = useState(tabs);
+  // 按照 lastAccessed 排序的 tabs
+  console.log({ tabs, sortedTabs });
+  useEffect(() => {
+    if (!isSortable) {
+      setSortedTabs(tabs);
+      return;
+    }
+    const result = [...tabs].sort((a, b) => {
+      const timeA = a.lastAccessed || 0;
+      const timeB = b.lastAccessed || 0;
+      return timeB - timeA; // 从最近到最远排序
+    });
+    setSortedTabs(result);
+  }, [isSortable, tabs]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -237,25 +253,34 @@ export function PreviewComponent() {
         console.log('🚀 Space pressed - Opening preview panel');
         setSpacePressed(true);
         setOpen(true);
+        setIsSortable(true);
+        // tabs.sort((a, b) => {
+        //   const timeA = a.lastAccessed || 0;
+        //   const timeB = b.lastAccessed || 0;
+        //   return timeB - timeA; // 从最近到最远排序
+        // })
+        // setTabDialogState({tabs: sortedTabs})
       }
       if (e.code === 'Tab' && spacePressed) {
         e.preventDefault();
         setTabCount(prev => prev + 1);
-        const newIndex = tabCount % tabs.length;
+        const newIndex = tabCount % sortedTabs.length; // 使用排序后的tabs
         setSelectedTabIndex(newIndex);
 
         console.log('📑 Tab pressed while Space held:', {
           tabCount,
           newIndex,
-          selectedTab: tabs[newIndex]?.title,
-          totalTabs: tabs.length,
+          selectedTab: sortedTabs[newIndex]?.title, // 使用排序后的tabs
+          totalTabs: sortedTabs.length,
         });
 
-        const selectedTab = tabs[newIndex];
+        const selectedTab = sortedTabs[newIndex]; // 使用排序后的tabs
         if (selectedTab?.id) {
-          const elementSelected = document.querySelector(`[data-selected="${true}"]`);
+          const electedElements = document.querySelectorAll(`[data-selected="true"]`);
           const element = document.querySelector(`[data-tab="${selectedTab.id}"]`);
-          elementSelected!.setAttribute('data-selected', 'false');
+          electedElements.forEach(element => {
+            element!.setAttribute('data-selected', 'false');
+          });
           element!.setAttribute('data-selected', 'true');
           console.log('[Tab Change]', '🎯 Focus set to tab:', selectedTab.title, element);
         }
@@ -268,7 +293,7 @@ export function PreviewComponent() {
         setSpacePressed(false);
         setTabCount(0);
 
-        const selectedTab = tabs[selectedTabIndex];
+        const selectedTab = sortedTabs[selectedTabIndex]; // 使用排序后的tabs
         console.log('🎯 Final selected tab:', {
           index: selectedTabIndex,
           title: selectedTab?.title,
@@ -294,7 +319,7 @@ export function PreviewComponent() {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [spacePressed, tabCount, tabs, selectedTabIndex]);
+  }, [spacePressed, tabCount, sortedTabs, selectedTabIndex]);
 
   useEffect(() => {
     // 立即执行一次
@@ -312,7 +337,7 @@ export function PreviewComponent() {
       });
       initializeTabs();
       // todo 恢复
-    }, 500000); // 60000ms = 1分钟
+    }, 500); // 60000ms = 1分钟
 
     // 清理函数
     return () => {
@@ -344,14 +369,7 @@ export function PreviewComponent() {
     isOpen = true;
     setTabDialogState({ isOpen });
   };
-  // const [commandListRef, setCommandListRef] = useState<HTMLDivElement | null>(null);
 
-  // 当前正在拖动的标签页的 ID
-  // const [activeId, setActiveId] = useState<number | null>(null);
-
-  // 配置拖动传感器
-  // PointerSensor: 用于检测鼠标/触摸输入
-  // activationConstraint.distance: 需要移动 8 像素才会触发拖动，防止误触
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -360,13 +378,8 @@ export function PreviewComponent() {
     }),
   );
 
-  // 处理拖动开始事件
-  const handleDragStart = useCallback((event: { active: { id: number } }) => {
-    // console.log(">>>>>>>>>>>>>>>>>>..")
-    // setActiveId(event.active.id);
-  }, []);
+  const handleDragStart = useCallback((event: { active: { id: number } }) => {}, []);
 
-  // 处理拖动结束事件
   const handleDragEnd = useCallback(
     async (event: { active: { id: number }; over: { id: number } | null }) => {
       const { active, over } = event;
@@ -376,7 +389,6 @@ export function PreviewComponent() {
         const newIndex = tabs.findIndex(tab => tab.id === over.id);
 
         try {
-          // 使用 Chrome API 移动标签页
           await chrome.tabs.move(active.id, { index: newIndex });
           const newTabs = arrayMove(tabs, oldIndex, newIndex);
           setTabDialogState({ tabs: newTabs });
@@ -384,12 +396,10 @@ export function PreviewComponent() {
           console.error('移动标签页失败:', error);
         }
       }
-      // setActiveId(null);
     },
     [tabs],
   );
 
-  // 缓存域名计数对象
   const domainCounts = useMemo(() => {
     const counts: { [key: string]: number } = {};
     tabs.forEach(tab => {
@@ -398,29 +408,9 @@ export function PreviewComponent() {
     });
     return counts;
   }, [tabs]);
-  // 缓存重复域名的数量
-
-  // 分类标签页
-  // const [PreviewTabsWithDataURL, PreviewTabsWithoutDataURL] = useMemo(() => {
-  //   const withDataURL = [];
-  //   const withoutDataURL = [];
-  //   for (const tab of tabs) {
-  //     if (localStorage?.[tab.id!]?.dataURL) {
-  //       withDataURL.push(tab);
-  //     } else {
-  //       withoutDataURL.push(tab);
-  //     }
-  //   }
-  //   return [withDataURL, withoutDataURL];
-  // }, [tabs, localStorage]);
-  // 缓存合并后的标签页列表
-  // const previewTabs = useMemo(() => {
-  //   return [...PreviewTabsWithDataURL, ...PreviewTabsWithoutDataURL].filter(t => t.id);
-  // }, [PreviewTabsWithDataURL, PreviewTabsWithoutDataURL]);
 
   const { ref, onScroll } = usePreserveScroll<HTMLDivElement>();
 
-  // 添加 filter 函数定义
   const filter = (value: string, search: string, keywords?: string[]) => {
     const extendValue = (value + ' ' + (keywords ? keywords.join(' ') : '')).toLowerCase();
     const searchKey = search.toLowerCase().split(' ');
@@ -459,7 +449,7 @@ export function PreviewComponent() {
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup className={'group-[.large-panel]:max-w-[svw]'} heading={'tabs'}>
               <Childrens
-                tabs={tabs}
+                tabs={sortedTabs}
                 localStorage={localStorage}
                 domainCounts={domainCounts}
                 handleDragStart={handleDragStart}
