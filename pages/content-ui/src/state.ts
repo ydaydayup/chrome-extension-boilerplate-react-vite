@@ -32,7 +32,7 @@ export const commonDialogState = create<CommonDialogStateType>(() => ({
 // 工具函数：更新状态并进行相等性检查
 // store: Zustand store 实例
 // newPartialState: 新的部分状态
-export const updateStateWithCheck = <T extends object>(store: UseBoundStore<T>, newPartialState: Partial<T>): void => {
+export const updateStateWithCheck = <T extends object>(store: UseBoundStore, newPartialState: Partial<T>): void => {
   const oldState = store.getState();
   const newState = { ...oldState, ...newPartialState };
   console.log('updateStateWithCheck before', oldState, newState);

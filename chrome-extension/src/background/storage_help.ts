@@ -32,6 +32,6 @@ export async function getStorage() {
   // console.log(storage, 'storage');
   return { syncStorage, localStorage };
 }
-export async function getOrSetCurrentTabxx(tabId: TabId, uniqueId: string, replace = true) {
+export async function getOrSetCurrentTab(tabId: TabId, uniqueId: string, replace = true) {
   chrome.storage.sync.set({ [uniqueId]: { tabId: tabId } });
 }

@@ -224,11 +224,78 @@ const Childrens = memo(
 export function PreviewComponent() {
   const { isOpen, tabs } = useTabDialogState(state => state);
   const [isInputFocused, setIsInputFocused] = React.useState(true);
-  // const activeTab = useRef<chrome.tabs.Tab | null>(null);
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
   const { localStorage } = useStorageState(state => state);
-  const testRef = useRef(null);
-  console.log(testRef.current === localStorage);
+
+  const [spacePressed, setSpacePressed] = useState(false);
+  const [tabCount, setTabCount] = useState(0);
+  const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !spacePressed) {
+        console.log('🚀 Space pressed - Opening preview panel');
+        setSpacePressed(true);
+        setOpen(true);
+      }
+      if (e.code === 'Tab' && spacePressed) {
+        e.preventDefault();
+        setTabCount(prev => prev + 1);
+        const newIndex = tabCount % tabs.length;
+        setSelectedTabIndex(newIndex);
+
+        console.log('📑 Tab pressed while Space held:', {
+          tabCount,
+          newIndex,
+          selectedTab: tabs[newIndex]?.title,
+          totalTabs: tabs.length,
+        });
+
+        const selectedTab = tabs[newIndex];
+        if (selectedTab?.id) {
+          const elementSelected = document.querySelector(`[data-selected="${true}"]`);
+          const element = document.querySelector(`[data-tab="${selectedTab.id}"]`);
+          elementSelected!.setAttribute('data-selected', 'false');
+          element!.setAttribute('data-selected', 'true');
+          console.log('[Tab Change]', '🎯 Focus set to tab:', selectedTab.title, element);
+        }
+      }
+    };
+
+    const handleKeyUp = async (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        console.log('🔄 Space released - Switching to selected tab');
+        setSpacePressed(false);
+        setTabCount(0);
+
+        const selectedTab = tabs[selectedTabIndex];
+        console.log('🎯 Final selected tab:', {
+          index: selectedTabIndex,
+          title: selectedTab?.title,
+          id: selectedTab?.id,
+        });
+
+        if (selectedTab) {
+          try {
+            await jump2Tab(selectedTab);
+            console.log('✅ Successfully switched to tab:', selectedTab.title);
+          } catch (error) {
+            console.error('❌ Error switching tab:', error);
+          }
+        }
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [spacePressed, tabCount, tabs, selectedTabIndex]);
+
   useEffect(() => {
     // 立即执行一次
     console.log('[Tab Manager]', {
@@ -244,7 +311,8 @@ export function PreviewComponent() {
         timestamp: new Date().toISOString(),
       });
       initializeTabs();
-    }, 500); // 60000ms = 1分钟
+      // todo 恢复
+    }, 500000); // 60000ms = 1分钟
 
     // 清理函数
     return () => {
