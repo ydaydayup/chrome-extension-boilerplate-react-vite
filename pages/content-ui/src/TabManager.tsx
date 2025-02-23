@@ -254,12 +254,6 @@ export function PreviewComponent() {
         setSpacePressed(true);
         setOpen(true);
         setIsSortable(true);
-        // tabs.sort((a, b) => {
-        //   const timeA = a.lastAccessed || 0;
-        //   const timeB = b.lastAccessed || 0;
-        //   return timeB - timeA; // 从最近到最远排序
-        // })
-        // setTabDialogState({tabs: sortedTabs})
       }
       if (e.code === 'Tab' && spacePressed) {
         e.preventDefault();
