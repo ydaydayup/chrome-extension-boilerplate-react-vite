@@ -51,10 +51,12 @@ const manifest = deepmerge(
     commands: {
       tabAssistant: {
         suggested_key: {
-          default: 'Ctrl+Shift+E',
-          mac: 'Command+Shift+E',
+          // default: 'Ctrl+Shift+E',
+          // mac: 'Command+Shift+E',
+          default: 'Alt+E',
+          mac: 'Alt+E',
         },
-        description: 'Run "foo" on the current page.',
+        description: '打开预览面板',
       },
     },
     // action: {

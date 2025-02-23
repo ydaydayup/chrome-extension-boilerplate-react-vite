@@ -232,14 +232,15 @@ export function PreviewComponent() {
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
   const [isSortable, setIsSortable] = useState(false);
   const [sortedTabs, setSortedTabs] = useState(tabs);
-  // 按照 lastAccessed 排序的 tabs
-  console.log({ tabs, sortedTabs });
   useEffect(() => {
+    const tabsExcludeCurrent = tabs.filter(t => t.title !== 'Smart Jumper Tab');
     if (!isSortable) {
-      setSortedTabs(tabs);
+      setSortedTabs(tabsExcludeCurrent);
       return;
     }
-    const result = [...tabs].sort((a, b) => {
+    // 按照 lastAccessed 排序的 tabs
+
+    const result = [...tabsExcludeCurrent].sort((a, b) => {
       const timeA = a.lastAccessed || 0;
       const timeB = b.lastAccessed || 0;
       return timeB - timeA; // 从最近到最远排序

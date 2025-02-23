@@ -4,7 +4,7 @@ import type { OnClickData } from '@types/chrome';
 import { getHtmlTextSummary } from '@src/background/kimi';
 import { mostFrequent } from '@src/background/history';
 import { activeTab, getAllTabs, getExtensionIndex, jump2Tab, removeTab, tabDataPrepare } from '@src/background/tab';
-import { getOrSetCurrentTab, getStorage } from '@src/background/storage_help';
+import { getStorage } from '@src/background/storage_help';
 import { panelState } from '@src/background/state';
 
 async function getBookmarkTreeNodes() {
